@@ -39,7 +39,7 @@ export default function LoginPage() {
                 d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-semibold text-white">Smart Commercial Solar</h1>
+          <h1 className="text-2xl font-semibold text-white">Smart Commercial Energy</h1>
           <p className="text-slate-400 text-sm mt-1">Quote Management System</p>
         </div>
 

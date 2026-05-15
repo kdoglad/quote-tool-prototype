@@ -74,11 +74,20 @@ interface QuoteEditorState {
 
 const defaultSiteDetails: SiteDetailsFormData = {
   project_name: '',
+  // Legacy fields
   customer_name: '',
   customer_company: '',
   customer_email: '',
   customer_phone: '',
   customer_abn: '',
+  // New client_info fields
+  primary_contact: '',
+  direct_ph: '',
+  email_address: '',
+  abn: '',
+  is_off_grid: false,
+  billing_address: '',
+  // Site fields
   site_address: '',
   site_suburb: '',
   site_state: '',
@@ -93,7 +102,7 @@ function makeDefaultLineItemState(instanceId: string, overrides: Partial<QuoteLi
   return {
     instance_id: instanceId,
     price_item_id: instanceId,
-    inclusion_status: 'included' as InclusionStatus,
+    inclusion_status: 'not_required' as InclusionStatus, // Changed from 'included' to 'not_required'
     qty: 1,
     selected_options: {},
     formula_override: null,
@@ -265,7 +274,7 @@ export const useQuoteEditorStore = create<QuoteEditorState>()(
           const newItem: QuoteLineItemState = {
             instance_id: item.id,
             price_item_id: null,
-            inclusion_status: 'included',
+            inclusion_status: 'not_required', // Changed from 'included' to 'not_required'
             qty: item.qty,
             selected_options: {},
             formula_override: null,

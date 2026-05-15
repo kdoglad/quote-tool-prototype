@@ -51,38 +51,49 @@ export default function SiteDetailsForm() {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Customer name"
-            value={siteDetails.customer_name}
-            onChange={(e) => setSiteDetails({ customer_name: e.target.value })}
+            label="Primary contact"
+            value={siteDetails.primary_contact || siteDetails.customer_name}
+            onChange={(e) => setSiteDetails({ primary_contact: e.target.value, customer_name: e.target.value })}
+            placeholder="Contact name"
           />
           <Input
-            label="Company (optional)"
-            value={siteDetails.customer_company}
-            onChange={(e) => setSiteDetails({ customer_company: e.target.value })}
-          />
-          <Input
-            label="Email"
-            type="email"
-            value={siteDetails.customer_email}
-            onChange={(e) => setSiteDetails({ customer_email: e.target.value })}
-          />
-          <Input
-            label="Phone"
+            label="Direct phone"
             type="tel"
-            value={siteDetails.customer_phone}
-            onChange={(e) => setSiteDetails({ customer_phone: e.target.value })}
+            value={siteDetails.direct_ph || siteDetails.customer_phone}
+            onChange={(e) => setSiteDetails({ direct_ph: e.target.value, customer_phone: e.target.value })}
+            placeholder="Phone number"
           />
           <Input
-            label="ABN (optional)"
-            value={siteDetails.customer_abn}
-            onChange={(e) => setSiteDetails({ customer_abn: e.target.value })}
-            placeholder="XX XXX XXX XXX"
+            label="Email address"
+            type="email"
+            value={siteDetails.email_address || siteDetails.customer_email}
+            onChange={(e) => setSiteDetails({ email_address: e.target.value, customer_email: e.target.value })}
+            placeholder="email@example.com"
           />
           <Input
             label="Project name"
             value={siteDetails.project_name}
             onChange={(e) => setSiteDetails({ project_name: e.target.value })}
+            placeholder="Project name"
           />
+          <Input
+            label="ABN (optional)"
+            value={siteDetails.abn || siteDetails.customer_abn}
+            onChange={(e) => setSiteDetails({ abn: e.target.value, customer_abn: e.target.value })}
+            placeholder="XX XXX XXX XXX"
+          />
+          <div className="flex items-center gap-2 pt-6">
+            <input
+              type="checkbox"
+              id="is_off_grid"
+              checked={siteDetails.is_off_grid || false}
+              onChange={(e) => setSiteDetails({ is_off_grid: e.target.checked })}
+              className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-brand-500 focus:ring-brand-500"
+            />
+            <label htmlFor="is_off_grid" className="text-sm text-slate-300">
+              Off-grid installation
+            </label>
+          </div>
         </div>
       </section>
 

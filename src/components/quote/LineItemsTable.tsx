@@ -154,7 +154,7 @@ export default function LineItemsTable({
           onClick={onAddCustomItem}
           className="w-full justify-center border border-dashed border-slate-700 hover:border-slate-600"
         >
-          Add Custom Line Item
+          Add/Update Item
         </Button>
       )}
     </div>

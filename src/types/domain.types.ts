@@ -77,6 +77,8 @@ export interface PriceItem {
   is_active: boolean
   notes: string | null
   created_at: string
+  specData?: Record<string, any>
+  type_value?: string
 }
 
 // A named selection dimension for a price item (e.g. "Configuration", "Enclosure Type")
@@ -212,12 +214,19 @@ export interface Quote {
   project_name: string
   status: QuoteStatus
   price_version_id: string
-  // Customer
+  // Customer (legacy)
   customer_name: string
   customer_company: string | null
   customer_email: string | null
   customer_phone: string | null
   customer_abn: string | null
+  // Customer (client_info fields)
+  primary_contact?: string
+  direct_ph?: string
+  email_address?: string
+  abn?: string
+  is_off_grid?: boolean
+  billing_address?: string
   // Site
   site_address: string
   site_suburb: string
@@ -349,11 +358,20 @@ export interface CustomLineItem {
 
 export interface SiteDetailsFormData {
   project_name: string
+  // Legacy fields (kept for backwards compatibility)
   customer_name: string
   customer_company: string
   customer_email: string
   customer_phone: string
   customer_abn: string
+  // New client_info table fields
+  primary_contact: string
+  direct_ph: string
+  email_address: string
+  abn: string
+  is_off_grid: boolean
+  billing_address: string
+  // Site fields
   site_address: string
   site_suburb: string
   site_state: string
