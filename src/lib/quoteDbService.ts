@@ -389,12 +389,14 @@ async function saveQuoteItems(
                 items.push({
                     quote_id: quoteId,
                     quote_number: quoteNumber,
+                    catalog_id: item.catalog_id || undefined,
                     category: item.category,
                     subcategory: item.type,
+                    item_code: item.item_code || undefined,
                     item_name: item.item,
                     item_type: item.type,
                     qty: item.quantity,
-                    unit: 'unit', // Default unit
+                    unit: item.unit || 'unit',
                     cost_per_watt: item.costPerWatt,
                     sale_cost_per_watt: item.salePerWatt,
                     quoted_cost: item.unitCost,
@@ -451,7 +453,7 @@ async function saveAllCalculations(
 
         // 5. EV calculation (ev_calc) - if EV included
         if (inputs.system.hasEv) {
-            await saveEvCalc(quoteId, inputs, result);
+            await saveEvCalc(quoteId, inputs);
         }
 
         // 6. Switch Gear calculation (switch_gear_calc)
@@ -589,8 +591,7 @@ async function saveBessCalc(
  */
 async function saveEvCalc(
     quoteId: string,
-    inputs: QuoteInputs,
-    result: QuoteResult
+    inputs: QuoteInputs
 ): Promise<void> {
     const calcData: DbEvCalc = {
         quote_id: quoteId,

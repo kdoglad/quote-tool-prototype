@@ -172,6 +172,8 @@ function buildFromStored(
     option_groups: groups,
     selected_options: inst.selected_options,
     sort_order: item.sort_order + (isDuplicate ? inst.sort_order * 0.001 : 0),
+    specData: item.specData,
+    type_value: item.type_value,
   }
 }
 
@@ -181,8 +183,8 @@ function buildVirtualDefault(
   optionById: Map<string, PriceItemOption>,
   scope: PartialFormulaScope
 ): ComputedLineItem {
-  const inclusionStatus: InclusionStatus = item.is_optional ? 'not_required' : 'included'
-  const isIncluded = !item.is_optional
+  const inclusionStatus: InclusionStatus = 'not_required'
+  const isIncluded = false
 
   const formulaTotal = isIncluded
     ? computeLineItemTotal(item, 1, scope, { type: 'none', value: 0 })
@@ -221,6 +223,8 @@ function buildVirtualDefault(
     option_groups: groups,
     selected_options: {},
     sort_order: item.sort_order,
+    specData: item.specData,
+    type_value: item.type_value,
   }
 }
 
@@ -264,6 +268,8 @@ function buildCustomItem(li: QuoteLineItemState, scope: PartialFormulaScope): Co
     option_groups: [],
     selected_options: {},
     sort_order: li.sort_order,
+    specData: undefined,
+    type_value: undefined,
   }
 }
 

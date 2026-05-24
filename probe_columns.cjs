@@ -98,7 +98,7 @@ const TABLES = [
   'prelim_specs', 'gpu_req_threshold_specs', 'optimiser_specs', 'racking_specs',
   'additional_racking_specs', 'inverter_station_specs', 'pvdb_specs', 'pfc_specs',
   'netnada_specs', 'netnada_addons_specs', 'harm_filtering_specs', 'battery_inverter_specs',
-  'bessdb_specs', 'ac_cabling_specs', 'dc_cabling_specs', 'cabling_addons_specs',
+  'bessdb_specs', 'ac_cabling_specs', 'cabling_addons_specs',
   'switch_gear_specs', 'ac_breaker_specs', 'install_specs', 'lifting_specs',
   'travel_accoms_freight_specs', 'safety_specs', 'monitoring_warranty_specs', 'monitoring_addons_specs'
 ];

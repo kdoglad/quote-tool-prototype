@@ -130,7 +130,6 @@ export const CATALOG_CATEGORY_OPTIONS = [
 
   // Section D - Cabling
   { value: 'ac_cabling', label: 'AC Cabling', dbCategory: 'Cabling', dbType: 'AC Cabling', specTable: 'ac_cabling_specs' },
-  { value: 'dc_cabling', label: 'DC Cabling', dbCategory: 'Cabling', dbType: 'DC Cabling', specTable: 'dc_cabling_specs' },
   { value: 'dc_twin_cabling', label: 'Twin DC Cabling', dbCategory: 'Cabling', dbType: 'Twin DC Cabling', specTable: 'dc_twin_cabling_specs' },
   { value: 'cabling_addons', label: 'Cabling Addons', dbCategory: 'Cabling', dbType: 'Cabling Addon', specTable: 'cabling_addons_specs' },
 
@@ -175,7 +174,6 @@ export const PREFIX_MAP: Record<string, string> = {
   ac_cabling: 'CAB',
   ac_combiner: 'ACC',
   dc_combiner: 'DCC',
-  dc_cabling: 'DCA',
   dc_twin_cabling: 'DTC',
   cabling_addons: 'CBA',
   switch_gear: 'SWG',

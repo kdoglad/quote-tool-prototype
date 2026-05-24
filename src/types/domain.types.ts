@@ -202,6 +202,8 @@ export interface ComputedLineItem {
   delta?: number
   delta_percent?: number
   sort_order: number
+  specData?: Record<string, any>
+  type_value?: string
 }
 
 // ============================================================

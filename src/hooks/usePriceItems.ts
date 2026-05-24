@@ -54,7 +54,7 @@ function buildPriceItem(
       id: catalogData.item_id,
       version_id: versionId,
       category: mappedCat,
-      subcategory: catalogData.subcategory ?? null,
+      subcategory: catalogData.subcategory || oldType || null,
       code: catalogData.item_code || 'N/A',
       name: catalogData.item_name || 'Unknown Item',
       unit: 'ea',
@@ -86,7 +86,6 @@ function buildPriceItem(
     case 'netnada': case 'netnada_addons': case 'safety': case 'monitoring_warranty': case 'monitoring_addons': case 'install': basePrice = n('price'); break;
     case 'battery_inverter': basePrice = n('pcs_price_excl_gst'); break;
     case 'ac_cabling': basePrice = n('4c_plus_earth_price_per_meter'); break;
-    case 'dc_cabling': basePrice = n('4c_plus_earth_price_per_meter'); break;
     case 'dc_twin_cabling': basePrice = n('twin_dc_cable_price_per_mm'); break;
     case 'ac_combiner': basePrice = n('ac_combiner_price_per_unit'); break;
     case 'dc_combiner': basePrice = n('dc_combiner_price_per_unit'); break;
@@ -103,7 +102,7 @@ function buildPriceItem(
     id: catalogData.item_id,
     version_id: versionId,
     category: (catConfig.dbCategory || mapLegacyCategory(oldCat, oldType)) as ItemCategory,
-    subcategory: catalogData.subcategory ?? null,
+    subcategory: catalogData.subcategory || catConfig.label || null,
     code: catalogData.item_code,
     name: catalogData.item_name || specData?.item_name || `${catConfig.label} Item`,
     unit: catalogData.unit || specData?.unit || 'ea',

@@ -5,16 +5,22 @@ import { useQuoteEditorStore } from '../../stores/quoteEditorStore'
 import { usePriceItems } from '../../hooks/usePriceItems'
 import { usePriceVersions } from '../../hooks/usePriceVersions'
 import { useSaveQuote, useQuote } from '../../hooks/useQuotes'
-import { supabase } from '../../lib/supabase'
 import { useToast } from '../../components/ui/Toast'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Spinner from '../../components/ui/Spinner'
-import type { InclusionStatus, PriceItem } from '../../types/domain.types'
-import { calculateQuote, type QuoteInputs, type CatalogDatabase } from '../../lib/quoteEngine'
-import { saveQuoteData } from '../../lib/quoteDbService'
-import { AUSTRALIAN_STATES } from '../../lib/constants'
+import type { InclusionStatus, QuoteLineItemState, ItemCategory, ComputedLineItem } from '../../types/domain.types'
+import { type QuoteInputs, type CategorySubtotal, type QuoteResult, type LineItem } from '../../lib/quoteEngine'
+import { saveQuoteData, updateQuoteData, getQuoteById } from '../../lib/quoteDbService'
+import { AUSTRALIAN_STATES, STC_ZONE_FACTORS } from '../../lib/constants'
+import { usePriceItemOptions } from '../../hooks/usePriceItemOptions'
+import { useComputedLineItems, useQuoteTotals } from '../../hooks/useComputedLineItems'
+import { useDNSPRules } from '../../hooks/useDNSPRules'
+import { extractNMIPrefix, resolveDNSP, buildDNSPScope, inferStateFromDNSP } from '../../lib/dnspResolver'
+import { computeLineItemTotal } from '../../lib/formulaEngine'
+
+const EMPTY_ARRAY: any[] = []
 
 // Category groupings for nested collapsibles
 const CATEGORY_STRUCTURE = [
@@ -29,6 +35,272 @@ const CATEGORY_STRUCTURE = [
   { id: 'EV', label: 'I. EV Charging' },
 ]
 
+const SPEC_FIELD_MAPPINGS: Record<string, { label: string; key: string }[]> = {
+  ac_breaker: [
+    { label: 'Rating', key: 'rating_a' },
+    { label: 'Name', key: 'name' },
+    { label: 'Breaker Type', key: 'breaker_type' }
+  ],
+  ac_cabling: [
+    { label: 'Size', key: 'size_mm2' },
+    { label: 'Inclusion', key: 'inclusion' },
+    { label: 'Conductor', key: 'conductor_material' }
+  ],
+  ac_combiner: [
+    { label: 'Combiner Name', key: 'ac_combiner_name' },
+    { label: 'Notes', key: 'notes' }
+  ],
+  additional_racking: [
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Unit', key: 'unit' }
+  ],
+  batteries: [
+    { label: 'Brand', key: 'brand' },
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Nominal kWh', key: 'nominal_kwh' }
+  ],
+  battery_inverter: [
+    { label: 'Brand', key: 'brand' },
+    { label: 'kVA', key: 'kva' },
+    { label: 'Item Name', key: 'item_name' }
+  ],
+  bessdb: [
+    { label: 'BESSDB Type', key: 'bessdb_type' }
+  ],
+  cabling_addons: [
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Addon Type', key: 'addon_type' }
+  ],
+  dc_cabling: [
+    { label: 'Size', key: 'size_mm2' },
+    { label: 'Inclusion', key: 'inclusion' },
+    { label: 'Conductor', key: 'conductor_material' }
+  ],
+  dc_combiner: [
+    { label: 'Combiner Name', key: 'dc_combiner_name' },
+    { label: 'Notes', key: 'notes' }
+  ],
+  dc_twin_cabling: [
+    { label: 'Size', key: 'size_twin_dc_cable_mm' },
+    { label: 'Notes', key: 'notes' }
+  ],
+  grid_protection: [
+    { label: 'DNSP', key: 'dnsp' },
+    { label: 'Req. Over', key: 'required_over_kva' },
+    { label: 'Export Limit Enforced', key: 'is_export_limit_enforced' }
+  ],
+  grid_connection: [
+    { label: 'DNSP', key: 'dnsp' },
+    { label: 'Low Size', key: 'low_size_kva' },
+    { label: 'High Size', key: 'high_side_kva' }
+  ],
+  harm_filtering: [
+    { label: 'Item Type', key: 'item_type' }
+  ],
+  install: [
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Install Item', key: 'install_item' },
+    { label: 'Unit', key: 'unit' }
+  ],
+  inverters: [
+    { label: 'Brand', key: 'brand' },
+    { label: 'Model', key: 'model' },
+    { label: 'Warranty Years', key: 'warranty_years' }
+  ],
+  inverter_station: [
+    { label: 'Station', key: 'inverter_station' }
+  ],
+  lifting: [
+    { label: 'Name', key: 'name' },
+    { label: 'Lifting Type', key: 'lifting_type' },
+    { label: 'Time', key: 'time' }
+  ],
+  monitoring_addons: [
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Unit', key: 'unit' }
+  ],
+  monitoring_warranty: [
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Unit', key: 'unit' }
+  ],
+  netnada: [
+    { label: 'Plan Type', key: 'plan_type' },
+    { label: 'Payment Plan', key: 'payment_plan' }
+  ],
+  netnada_addons: [
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Payment Plan', key: 'payment_plan' }
+  ],
+  optimisers: [
+    { label: 'Size VA', key: 'size_va' },
+    { label: 'Optimiser Name', key: 'optimiser_name' }
+  ],
+  panels: [
+    { label: 'Brand', key: 'brand' },
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Item Name', key: 'item_name' }
+  ],
+  pfc: [
+    { label: 'PFC Type', key: 'pfc_type' }
+  ],
+  prelim_general: [
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Item Name', key: 'item_name' }
+  ],
+  pvdb: [
+    { label: 'PVDB Type', key: 'pvdb_type' }
+  ],
+  racking: [
+    { label: 'Racking Type', key: 'racking_type' }
+  ],
+  safety: [
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Unit', key: 'unit' }
+  ],
+  switch_gear: [
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Item Name', key: 'item_name' }
+  ],
+  travel_accoms_freight: [
+    { label: 'Distance', key: 'distance_frm_city_center' },
+    { label: 'Rates', key: 'travel_rates' }
+  ],
+  witness_injection: [
+    { label: 'DNSP', key: 'dnsp' },
+    { label: 'Req. Over', key: 'required_over_kva' }
+  ]
+};
+
+interface QuoteItemRowProps {
+  computedItem: ComputedLineItem
+  scope: any
+  handleItemStatusChange: (instanceId: string, status: InclusionStatus) => void
+  handleItemQtyChange: (instanceId: string, qty: number) => void
+}
+
+function QuoteItemRow({
+  computedItem,
+  scope,
+  handleItemStatusChange,
+  handleItemQtyChange
+}: QuoteItemRowProps) {
+  const [qtyStr, setQtyStr] = useState(String(computedItem.qty))
+  const isIncluded = computedItem.is_included
+
+  useEffect(() => {
+    setQtyStr(String(computedItem.qty))
+  }, [computedItem.qty])
+
+  const unitRate = useMemo(() => {
+    if (isIncluded && computedItem.qty > 0) {
+      return computedItem.computed_total / computedItem.qty
+    }
+    const mockItem = { formula: computedItem.formula, base_price: computedItem.base_unit_price }
+    try {
+      return computeLineItemTotal(mockItem, 1, scope, { type: 'none', value: 0 })
+    } catch {
+      return computedItem.base_unit_price
+    }
+  }, [isIncluded, computedItem.qty, computedItem.computed_total, computedItem.formula, computedItem.base_unit_price, scope])
+
+  const total = computedItem.computed_total
+
+  const nameKeys = ['item_name', 'name', 'ac_combiner_name', 'dc_combiner_name', 'optimiser_name', 'install_item'];
+  const hasNameSpec = !!(computedItem.specData && nameKeys.some(key => {
+    const val = computedItem.specData?.[key];
+    return val !== undefined && val !== null && val !== '';
+  }));
+
+  const isNameRedundant = computedItem.name.trim().toUpperCase() === computedItem.code.trim().toUpperCase();
+  const shouldHideMainDescription = isNameRedundant || hasNameSpec;
+
+  return (
+    <div className="grid grid-cols-11 gap-2 px-4 py-2.5 hover:bg-slate-850 transition-colors text-sm">
+      {/* Status */}
+      <div className="col-span-2">
+        <select
+          value={computedItem.inclusion_status}
+          onChange={(e) => handleItemStatusChange(computedItem.instance_id, e.target.value as InclusionStatus)}
+          className={`w-full bg-slate-800 border rounded text-[13px] py-1 px-2.5 focus:outline-none focus:ring-1 ${isIncluded
+            ? 'border-emerald-600 text-emerald-400 focus:ring-emerald-500 font-medium'
+            : 'border-slate-700 text-slate-400 focus:ring-brand-500'
+            }`}
+        >
+          <option value="not_required">Not Required</option>
+          <option value="included">Included</option>
+        </select>
+      </div>
+
+      {/* Code */}
+      <div className="col-span-1 text-slate-400 text-[13px] font-mono truncate pt-1">{computedItem.code}</div>
+
+      {/* Description */}
+      <div className="col-span-3">
+        {!shouldHideMainDescription && (
+          <div className="text-white text-[13px] font-medium break-words leading-relaxed">{computedItem.name}</div>
+        )}
+        
+        {/* Spec fields render */}
+        {computedItem.specData && SPEC_FIELD_MAPPINGS[computedItem.type_value || ''] && (
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {SPEC_FIELD_MAPPINGS[computedItem.type_value || ''].map((field) => {
+              const val = computedItem.specData?.[field.key];
+              if (val === undefined || val === null || val === '') return null;
+              const displayVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val);
+              return (
+                <span key={field.key} className="bg-slate-800 border border-slate-500 px-2.5 py-0.5 rounded text-[12px] text-white whitespace-nowrap inline-flex items-center shadow-sm">
+                  <span className="text-slate-400 font-semibold mr-1">{field.label}:</span> {displayVal}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Unit */}
+      <div className="col-span-1 text-slate-300 text-[13px] pt-1">{computedItem.unit}</div>
+
+      {/* Qty */}
+      <div className="col-span-1">
+        <input
+          type="number"
+          min="0"
+          value={qtyStr}
+          onChange={(e) => {
+            const val = e.target.value;
+            setQtyStr(val);
+            const parsed = parseInt(val, 10);
+            if (!isNaN(parsed)) {
+              handleItemQtyChange(computedItem.instance_id, parsed);
+            } else {
+              handleItemQtyChange(computedItem.instance_id, 0);
+            }
+          }}
+          onBlur={() => {
+            if (qtyStr.trim() === '') {
+              setQtyStr(String(computedItem.qty));
+            }
+          }}
+          className="w-full bg-slate-800 border border-slate-700 rounded text-[13px] text-white py-1 px-2 focus:outline-none focus:ring-1 focus:ring-brand-500 font-mono text-right"
+        />
+      </div>
+
+      {/* Rate */}
+      <div className="col-span-2 text-slate-200 text-[13px] font-mono pt-1">
+        ${unitRate.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </div>
+
+      {/* Total */}
+      <div className={`col-span-1 text-right font-semibold text-[13px] pt-1 ${isIncluded ? 'text-emerald-400' : 'text-slate-500'}`}>
+        ${total.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </div>
+    </div>
+  )
+}
+
 export default function QuoteEditorPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -38,12 +310,12 @@ export default function QuoteEditorPage() {
   const { data: existingQuote } = useQuote(isNew ? undefined : id)
 
   const {
-    quoteId, isDirty, selectedVersionId,
-    setSelectedVersion, markSaved, setQuoteId
+    isDirty, selectedVersionId, scope, lineItems,
+    setSelectedVersion, markSaved, setQuoteId, setSiteDetails, setScope, setLineItems, setLineItemState, resetStore
   } = useQuoteEditorStore()
 
-  const { data: versions = [] } = usePriceVersions()
-  const { data: priceItems = [], isLoading: itemsLoading } = usePriceItems(selectedVersionId ?? undefined)
+  const { data: versions = EMPTY_ARRAY } = usePriceVersions()
+  const { data: priceItems = EMPTY_ARRAY, isLoading: itemsLoading } = usePriceItems(selectedVersionId ?? undefined)
   const saveQuote = useSaveQuote()
 
   // Local state for form fields
@@ -62,13 +334,29 @@ export default function QuoteEditorPage() {
 
   const [projectName, setProjectName] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Prelim']))
+  const [expandedSubcategories, setExpandedSubcategories] = useState<Set<string>>(new Set())
 
-  // Item state: itemId -> { status, qty }
-  const [itemStates, setItemStates] = useState<Record<string, { status: InclusionStatus; qty: number }>>({})
-  const [quotePreview, setQuotePreview] = useState<any>(null)
-  const [isCalculating, setIsCalculating] = useState(false)
+  // Loading state tracking
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false)
+  const [loadedDbItems, setLoadedDbItems] = useState<any[] | null>(null)
+  const [hasMappedItems, setHasMappedItems] = useState(false)
 
-  // Auto-select latest published version
+  // DNSP and price option hooks
+  const { data: dnspRules = EMPTY_ARRAY } = useDNSPRules()
+  const priceItemIds = useMemo(() => priceItems.map((pi) => pi.id), [priceItems])
+  const { data: optionData = { groups: [], options: [] } } = usePriceItemOptions(priceItemIds)
+
+  // Dynamic formula-evaluated items & totals
+  const computedItems = useComputedLineItems(priceItems, lineItems, scope, optionData)
+  const totals = useQuoteTotals(computedItems)
+
+  // Reset mapping flag when quote ID changes
+  useEffect(() => {
+    setLoadedDbItems(null)
+    setHasMappedItems(false)
+  }, [id])
+
+  // Auto-select latest published version if not selected
   useEffect(() => {
     if (!selectedVersionId && versions.length > 0) {
       const latest = versions.find((v) => !v.is_draft)
@@ -76,121 +364,230 @@ export default function QuoteEditorPage() {
     }
   }, [versions, selectedVersionId, setSelectedVersion])
 
-  // Initialize item states
+  // Load existing quote data from database
   useEffect(() => {
-    if (priceItems.length > 0) {
-      const initial: Record<string, { status: InclusionStatus; qty: number }> = {}
-      priceItems.forEach(item => {
-        initial[item.id] = { status: 'not_required', qty: 1 }
+    if (isNew) {
+      resetStore()
+      setProjectName('')
+      setClientInfo({
+        abn: '', primary_contact: '', direct_ph: '', email_address: '', nmi: '',
+        is_off_grid: false, billing_address: '', suburb: '', postcode: '', state: '',
       })
-      setItemStates(initial)
+      setInstallInfo({
+        total_system_size_kw: 0, funding_model: 'Capex', install_address: '', suburb: '',
+        postcode: '', state: '', stcs_on_first_100kw: true,
+        expected_commissioning_year: new Date().getFullYear(),
+        expected_commissioning_month: 'January', existing_pv_kwp: 0, existing_pv_kva: 0,
+        hv_customer: false, site_inspection_confirmed: false,
+      })
+      return
     }
-  }, [priceItems])
 
-  // Group items by category
+    setIsLoadingQuote(true)
+    getQuoteById(id).then((res) => {
+      if (res.success && res.data) {
+        const { quote, items } = res.data
+        setQuoteId(quote.id)
+        setSelectedVersion(quote.price_version_id)
+        setProjectName(quote.project_name || '')
+
+        const cInfo = quote.client_info || {}
+        setClientInfo({
+          abn: cInfo.abn || '',
+          primary_contact: cInfo.primary_contact || '',
+          direct_ph: cInfo.direct_ph || '',
+          email_address: cInfo.email_address || '',
+          nmi: quote.nmi || cInfo.nmi || '',
+          is_off_grid: cInfo.is_off_grid || false,
+          billing_address: cInfo.billing_address || '',
+          suburb: cInfo.suburb || '',
+          postcode: cInfo.postcode || '',
+          state: cInfo.state || '',
+        })
+
+        setInstallInfo({
+          total_system_size_kw: quote.system_kw || 0,
+          funding_model: quote.internal_notes?.includes('PPA') ? 'PPA' : 'Capex',
+          install_address: quote.site_address || '',
+          suburb: quote.site_suburb || '',
+          postcode: quote.site_postcode || '',
+          state: quote.site_state || '',
+          stcs_on_first_100kw: true,
+          expected_commissioning_year: new Date().getFullYear(),
+          expected_commissioning_month: 'January',
+          existing_pv_kwp: quote.existing_solar_kw || 0,
+          existing_pv_kva: quote.existing_solar_kw || 0,
+          hv_customer: false,
+          site_inspection_confirmed: false,
+        })
+
+        setLoadedDbItems(items || [])
+      } else {
+        addToast('error', res.error || 'Failed to load quote details')
+      }
+    }).finally(() => {
+      setIsLoadingQuote(false)
+    })
+  }, [id, isNew, setQuoteId, setSelectedVersion, addToast, resetStore])
+
+  // Map loaded database items & standard items to Zustand store's lineItems
+  useEffect(() => {
+    if (!isNew && loadedDbItems && priceItems.length > 0 && !hasMappedItems) {
+      const mappedLineItems: QuoteLineItemState[] = []
+
+      // Map standard items
+      priceItems.forEach(item => {
+        const matchingDbItems = loadedDbItems.filter((i: any) => i.catalog_id === item.id)
+        if (matchingDbItems.length > 0) {
+          matchingDbItems.forEach((dbItem: any, idx: number) => {
+            const isPrimary = idx === 0
+            const loadedStatus = dbItem.status || (dbItem.total_line_amount !== undefined && Number(dbItem.total_line_amount) !== 0 ? 'included' : 'not_required')
+            mappedLineItems.push({
+              instance_id: isPrimary ? item.id : (dbItem.id || crypto.randomUUID()),
+              price_item_id: item.id,
+              inclusion_status: loadedStatus as InclusionStatus,
+              qty: dbItem.qty || 1,
+              selected_options: {},
+              formula_override: null,
+              modifier_type: 'none',
+              modifier_value: 0,
+              modifier_note: '',
+              sort_order: item.sort_order + (isPrimary ? 0 : idx * 0.5)
+            })
+          })
+        } else {
+          // Excluded standard item
+          mappedLineItems.push({
+            instance_id: item.id,
+            price_item_id: item.id,
+            inclusion_status: 'not_required' as InclusionStatus,
+            qty: 1,
+            selected_options: {},
+            formula_override: null,
+            modifier_type: 'none',
+            modifier_value: 0,
+            modifier_note: '',
+            sort_order: item.sort_order
+          })
+        }
+      })
+
+      // Map custom items
+      loadedDbItems.filter((i: any) => !i.catalog_id).forEach((dbItem: any) => {
+        const loadedStatus = dbItem.status || (dbItem.total_line_amount !== undefined && Number(dbItem.total_line_amount) !== 0 ? 'included' : 'not_required')
+        mappedLineItems.push({
+          instance_id: dbItem.id || crypto.randomUUID(),
+          price_item_id: null,
+          inclusion_status: loadedStatus as InclusionStatus,
+          qty: dbItem.qty || 1,
+          selected_options: {},
+          formula_override: null,
+          modifier_type: 'none',
+          modifier_value: 0,
+          modifier_note: '',
+          sort_order: dbItem.sort_order || 100,
+          custom_category: dbItem.category as ItemCategory,
+          custom_code: dbItem.item_code,
+          custom_name: dbItem.item_name,
+          custom_unit: dbItem.unit,
+          custom_base_price: dbItem.quoted_cost || dbItem.quoted_sales_cost || 0,
+          custom_formula: null
+        })
+      })
+
+      setLineItems(mappedLineItems)
+      setHasMappedItems(true)
+    }
+  }, [isNew, loadedDbItems, priceItems, hasMappedItems, setLineItems])
+
+  // Synchronize local form inputs to Zustand store's siteDetails and scope dynamically
+  useEffect(() => {
+    if (isLoadingQuote) return
+
+    const nmiPrefix = extractNMIPrefix(clientInfo.nmi)
+    const resolvedDnsp = resolveDNSP(nmiPrefix, dnspRules)
+    const inferredState = inferStateFromDNSP(resolvedDnsp)
+    const activeState = installInfo.state || clientInfo.state || inferredState || 'NSW'
+
+    const stcZoneFactor = STC_ZONE_FACTORS[activeState] || 1.382
+    const stcYears = Math.max(0, 2031 - installInfo.expected_commissioning_year)
+    const dnspScope = buildDNSPScope(resolvedDnsp, installInfo.total_system_size_kw)
+
+    const nextScope = {
+      system_kw: installInfo.total_system_size_kw,
+      system_kva: installInfo.total_system_size_kw * 1.25,
+      site_state: activeState,
+      postcode: installInfo.postcode || clientInfo.postcode || '',
+      nmi_prefix: nmiPrefix,
+      existing_solar_kw: installInfo.existing_pv_kwp || 0,
+      stc_zone_factor: stcZoneFactor,
+      stc_years: stcYears,
+      ...dnspScope,
+    }
+
+    const nextSiteDetails = {
+      project_name: projectName,
+      primary_contact: clientInfo.primary_contact,
+      direct_ph: clientInfo.direct_ph,
+      email_address: clientInfo.email_address,
+      abn: clientInfo.abn,
+      nmi: clientInfo.nmi,
+      is_off_grid: clientInfo.is_off_grid,
+      billing_address: clientInfo.billing_address,
+      site_address: installInfo.install_address,
+      site_suburb: installInfo.suburb,
+      site_state: activeState,
+      site_postcode: installInfo.postcode,
+      dnsp: resolvedDnsp ? resolvedDnsp.dnsp_name : '',
+    }
+
+    const currentStore = useQuoteEditorStore.getState()
+
+    const hasScopeChanged = Object.keys(nextScope).some(
+      (key) => (currentStore.scope as any)[key] !== (nextScope as any)[key]
+    )
+
+    const hasSiteDetailsChanged = Object.keys(nextSiteDetails).some(
+      (key) => (currentStore.siteDetails as any)[key] !== (nextSiteDetails as any)[key]
+    )
+
+    if (hasScopeChanged) {
+      setScope(nextScope)
+    }
+
+    if (hasSiteDetailsChanged) {
+      setSiteDetails(nextSiteDetails)
+    }
+  }, [
+    projectName,
+    clientInfo,
+    installInfo,
+    dnspRules,
+    setScope,
+    setSiteDetails,
+    isLoadingQuote
+  ])
+
+  // Group computed items by category and subcategory dynamically
   const groupedItems = useMemo(() => {
-    const groups: Record<string, PriceItem[]> = {}
-    priceItems.forEach(item => {
+    const groups: Record<string, Record<string, ComputedLineItem[]>> = {}
+    computedItems.forEach(item => {
       const category = item.category
-      if (!groups[category]) groups[category] = []
-      groups[category].push(item)
+      const subcategory = item.subcategory || 'Other'
+      if (!groups[category]) groups[category] = {}
+      if (!groups[category][subcategory]) groups[category][subcategory] = []
+      groups[category][subcategory].push(item)
     })
     return groups
-  }, [priceItems])
+  }, [computedItems])
 
-  // Calculate totals
-  const totals = useMemo(() => {
-    let subtotal = 0
-    const includedItems = priceItems.filter(item => itemStates[item.id]?.status === 'included')
+  const handleItemStatusChange = useCallback((instanceId: string, status: InclusionStatus) => {
+    setLineItemState(instanceId, { inclusion_status: status })
+  }, [setLineItemState])
 
-    includedItems.forEach(item => {
-      const qty = itemStates[item.id]?.qty || 1
-      const total = item.base_price * qty
-      subtotal += total
-    })
-
-    const gst = subtotal * 0.10
-    const total = subtotal + gst
-
-    return { subtotal, gst, total }
-  }, [priceItems, itemStates])
-
-  // Trigger live calculation
-  useEffect(() => {
-    if (!selectedVersionId || priceItems.length === 0) return
-    const timer = setTimeout(() => { triggerCalculation() }, 500)
-    return () => clearTimeout(timer)
-  }, [clientInfo, installInfo, itemStates, selectedVersionId, priceItems])
-
-  const triggerCalculation = useCallback(async () => {
-    if (!selectedVersionId || priceItems.length === 0) return
-    setIsCalculating(true)
-    try {
-      const inputs: QuoteInputs = {
-        client: {
-          projectName: projectName || 'Untitled Project',
-          contactName: clientInfo.primary_contact,
-          email: clientInfo.email_address,
-          phone: clientInfo.direct_ph,
-          nmi: clientInfo.nmi,
-          isOffGrid: clientInfo.is_off_grid,
-          state: installInfo.state || clientInfo.state,
-          postcode: installInfo.postcode || clientInfo.postcode,
-          suburb: installInfo.suburb || clientInfo.suburb,
-          billingAddress: clientInfo.billing_address,
-          abn: clientInfo.abn,
-        },
-        system: {
-          totalSystemSizeKw: installInfo.total_system_size_kw,
-          panelWattage: 440,
-          panelQuantity: Math.ceil((installInfo.total_system_size_kw * 1000) / 440),
-          inverterSizeKw: installInfo.total_system_size_kw * 1.2,
-          inverterQuantity: 1,
-          hasBess: false,
-          bessCapacityKwh: 0,
-          hasEv: false,
-          evChargerQuantity: 0,
-          isHvCustomer: installInfo.hv_customer,
-          hasExistingPv: installInfo.existing_pv_kwp > 0,
-          existingPvSizeKw: installInfo.existing_pv_kwp,
-        },
-        installation: {
-          installYear: installInfo.expected_commissioning_year,
-          installMonth: new Date().getMonth() + 1,
-          siteInspectionConfirmed: installInfo.site_inspection_confirmed,
-          hvCustomer: installInfo.hv_customer,
-          dnsp: 'Ausgrid',
-          isPpaOrCapex: installInfo.funding_model as 'PPA' | 'Capex',
-        },
-        pricing: {
-          proposedMarkup: 0.25,
-          targetMarkup: 0.30,
-          minimumMarkup: 0.20,
-          contingencyBudget: 5000,
-          stcPrice: 38.0,
-          veecTraderFee: 0,
-        },
-      }
-      const catalog: CatalogDatabase = {
-        panels: [], inverters: [], batteries: [], racking: [],
-        cabling: [], install: [], prelim: [], gridConnection: [],
-      }
-      const result = calculateQuote(inputs, catalog)
-      setQuotePreview(result)
-    } catch (error) {
-      console.error('Calculation error:', error)
-    } finally {
-      setIsCalculating(false)
-    }
-  }, [clientInfo, installInfo, itemStates, projectName, selectedVersionId, priceItems])
-
-  const handleItemStatusChange = useCallback((itemId: string, status: InclusionStatus) => {
-    setItemStates(prev => ({ ...prev, [itemId]: { ...prev[itemId], status } }))
-  }, [])
-
-  const handleItemQtyChange = useCallback((itemId: string, qty: number) => {
-    setItemStates(prev => ({ ...prev, [itemId]: { ...prev[itemId], qty } }))
-  }, [])
+  const handleItemQtyChange = useCallback((instanceId: string, qty: number) => {
+    setLineItemState(instanceId, { qty })
+  }, [setLineItemState])
 
   const toggleCategory = useCallback((categoryId: string) => {
     setExpandedCategories(prev => {
@@ -202,7 +599,22 @@ export default function QuoteEditorPage() {
   }, [])
 
   async function handleSave() {
+    if (!selectedVersionId) {
+      addToast('error', 'Please select a price table version first.')
+      return
+    }
+
     try {
+      const nmiPrefix = extractNMIPrefix(clientInfo.nmi)
+      const resolvedDnsp = resolveDNSP(nmiPrefix, dnspRules)
+      const inferredState = inferStateFromDNSP(resolvedDnsp)
+      const activeState = installInfo.state || clientInfo.state || inferredState || 'NSW'
+
+      const stcZoneFactor = STC_ZONE_FACTORS[activeState] || 1.382
+      const stcYears = Math.max(0, 2031 - installInfo.expected_commissioning_year)
+      const stcQty = Math.ceil(installInfo.total_system_size_kw * stcZoneFactor * stcYears)
+      const stcDiscount = stcQty * 38.0
+
       const inputs: QuoteInputs = {
         client: {
           projectName: projectName || 'Untitled Project',
@@ -211,7 +623,7 @@ export default function QuoteEditorPage() {
           phone: clientInfo.direct_ph,
           nmi: clientInfo.nmi,
           isOffGrid: clientInfo.is_off_grid,
-          state: installInfo.state || clientInfo.state,
+          state: activeState,
           postcode: installInfo.postcode || clientInfo.postcode,
           suburb: installInfo.suburb || clientInfo.suburb,
           billingAddress: clientInfo.billing_address,
@@ -221,11 +633,11 @@ export default function QuoteEditorPage() {
           totalSystemSizeKw: installInfo.total_system_size_kw,
           panelWattage: 440,
           panelQuantity: Math.ceil((installInfo.total_system_size_kw * 1000) / 440),
-          inverterSizeKw: installInfo.total_system_size_kw * 1.2,
+          inverterSizeKw: installInfo.total_system_size_kw * 1.25,
           inverterQuantity: 1,
-          hasBess: false,
-          bessCapacityKwh: 0,
-          hasEv: false,
+          hasBess: scope.has_bess || false,
+          bessCapacityKwh: scope.bess_kwh || 0,
+          hasEv: scope.has_ev || false,
           evChargerQuantity: 0,
           isHvCustomer: installInfo.hv_customer,
           hasExistingPv: installInfo.existing_pv_kwp > 0,
@@ -233,10 +645,10 @@ export default function QuoteEditorPage() {
         },
         installation: {
           installYear: installInfo.expected_commissioning_year,
-          installMonth: new Date().getMonth() + 1,
+          installMonth: 1,
           siteInspectionConfirmed: installInfo.site_inspection_confirmed,
           hvCustomer: installInfo.hv_customer,
-          dnsp: 'Ausgrid',
+          dnsp: resolvedDnsp ? resolvedDnsp.dnsp_name : 'Ausgrid',
           isPpaOrCapex: installInfo.funding_model as 'PPA' | 'Capex',
         },
         pricing: {
@@ -248,12 +660,83 @@ export default function QuoteEditorPage() {
           veecTraderFee: 0,
         },
       }
-      const catalog: CatalogDatabase = {
-        panels: [], inverters: [], batteries: [], racking: [],
-        cabling: [], install: [], prelim: [], gridConnection: [],
+
+      // Group and construct subtotals for the DB matching what's evaluated by our dynamic formulas
+      const subtotals: CategorySubtotal[] = []
+      const categories = Array.from(new Set(computedItems.map(i => i.category)))
+
+      categories.forEach(cat => {
+        const catItems = computedItems.filter(i => i.category === cat && i.is_included)
+        if (catItems.length === 0) return
+
+        const lineItems: LineItem[] = catItems.map(comp => {
+          const totalAmount = comp.computed_total
+          const rate = comp.qty > 0 ? comp.computed_total / comp.qty : 0
+
+          return {
+            category: comp.category,
+            item: comp.name,
+            type: comp.subcategory || comp.category,
+            quantity: comp.qty,
+            unitCost: comp.base_unit_price,
+            totalCost: totalAmount,
+            costPerWatt: totalAmount / (installInfo.total_system_size_kw * 1000 || 1),
+            salesRate: rate,
+            salePerWatt: totalAmount / (installInfo.total_system_size_kw * 1000 || 1),
+            status: comp.inclusion_status as any,
+            catalog_id: comp.price_item_id,
+            item_code: comp.code,
+            unit: comp.unit,
+          }
+        })
+
+        const catTotalCost = lineItems.reduce((sum, li) => sum + li.totalCost, 0)
+
+        subtotals.push({
+          category: cat,
+          totalCost: catTotalCost,
+          totalSale: catTotalCost,
+          costPerWatt: catTotalCost / (installInfo.total_system_size_kw * 1000 || 1),
+          salePerWatt: catTotalCost / (installInfo.total_system_size_kw * 1000 || 1),
+          items: lineItems,
+        })
+      })
+
+      const quoteResult: QuoteResult = {
+        quoteNumber: existingQuote?.quote_number || `Q-${Date.now()}`,
+        projectName: projectName || 'Untitled Project',
+        systemSizeKw: installInfo.total_system_size_kw,
+        subtotals,
+        totalInstallCost: totals.subtotal,
+        costPerWatt: totals.subtotal / (installInfo.total_system_size_kw * 1000 || 1),
+        markup: 0.25,
+        salePrice: totals.subtotal,
+        salePricePerWatt: totals.subtotal / (installInfo.total_system_size_kw * 1000 || 1),
+        profitMargin: 0,
+        grossProfitPercent: 0,
+        rebates: {
+          claimedStcCapacityKwp: installInfo.total_system_size_kw,
+          deemingPeriodYears: stcYears,
+          stcQuantity: stcQty,
+          stcDiscountExGst: stcDiscount,
+          veecTraderFeeExGst: 0,
+          upfrontVeecDiscountExGst: 0,
+          totalUpfrontRebateExGst: Math.abs(totals.rebateTotal),
+        },
+        totalSystemValueExGst: totals.subtotal,
+        gst: totals.gst,
+        totalSystemValueIncGst: totals.subtotal + totals.gst,
+        netSystemValueExGst: totals.netBeforeGST,
+        netSystemValueIncGst: totals.total,
+        calculatedAt: new Date(),
       }
-      const result = calculateQuote(inputs, catalog)
-      const saveResult = await saveQuoteData(inputs, result, selectedVersionId!)
+
+      let saveResult
+      if (isNew) {
+        saveResult = await saveQuoteData(inputs, quoteResult, selectedVersionId!)
+      } else {
+        saveResult = await updateQuoteData(id, inputs, quoteResult, 'Updated quote details and dynamic line items')
+      }
 
       if (saveResult.success && saveResult.quoteId) {
         setQuoteId(saveResult.quoteId)
@@ -269,6 +752,14 @@ export default function QuoteEditorPage() {
   }
 
   const publishedVersions = versions.filter((v) => !v.is_draft)
+
+  if (isLoadingQuote) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-950">
+        <Spinner />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-slate-950">
@@ -306,7 +797,7 @@ export default function QuoteEditorPage() {
       {/* Main layout: Left (form) + Middle (items) + Right (summary) */}
       <div className="flex flex-1 overflow-hidden">
         {/* LEFT SIDE: Information Tab */}
-        <div className="w-[380px] border-r border-slate-800 overflow-y-auto p-6 space-y-6">
+        <div className="w-[300px] border-r border-slate-800 overflow-y-auto p-4 space-y-4 shrink-0">
           <div>
             <h2 className="text-lg font-semibold text-white mb-4">Quote Information</h2>
             <div className="mb-6">
@@ -396,16 +887,14 @@ export default function QuoteEditorPage() {
             <div className="space-y-2">
               {CATEGORY_STRUCTURE.map((category) => {
                 const isExpanded = expandedCategories.has(category.id)
-                const items = groupedItems[category.id] || []
-                if (items.length === 0) return null
+                const subcategories = groupedItems[category.id] || {}
+                const allCategoryItems = Object.values(subcategories).flat()
+                if (allCategoryItems.length === 0) return null
 
-                // Calculate category total
-                const categoryTotal = items
-                  .filter(item => itemStates[item.id]?.status === 'included')
-                  .reduce((sum, item) => {
-                    const qty = itemStates[item.id]?.qty || 1
-                    return sum + (item.base_price * qty)
-                  }, 0)
+                // Calculate category total dynamically using dynamic evaluations
+                const categoryTotal = allCategoryItems
+                  .filter(item => item.is_included)
+                  .reduce((sum, item) => sum + item.computed_total, 0)
 
                 return (
                   <div key={category.id} className="border border-slate-700 rounded-lg overflow-hidden">
@@ -429,73 +918,61 @@ export default function QuoteEditorPage() {
                     {isExpanded && (
                       <div className="bg-slate-900">
                         {/* Table Header */}
-                        <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-slate-850 border-b border-slate-800 text-xs font-medium text-slate-400">
+                        <div className="grid grid-cols-11 gap-2 px-4 py-2 bg-slate-850 border-b border-slate-800 text-xs font-medium text-slate-400">
                           <div className="col-span-2">Status</div>
                           <div className="col-span-1">Code</div>
                           <div className="col-span-3">Description</div>
                           <div className="col-span-1">Unit</div>
                           <div className="col-span-1">Qty</div>
                           <div className="col-span-2">Rate</div>
-                          <div className="col-span-1">Adj.</div>
                           <div className="col-span-1 text-right">Total</div>
                         </div>
 
-                        {/* Table Rows */}
+                        {/* Subcategories */}
                         <div className="divide-y divide-slate-800">
-                          {items.map((item) => {
-                            const state = itemStates[item.id] || { status: 'not_required', qty: 1 }
-                            const total = item.base_price * state.qty
-                            const isIncluded = state.status === 'included'
+                          {Object.entries(subcategories).map(([subcatName, items]) => {
+                            const subcatKey = `${category.id}-${subcatName}`
+                            const isSubcatExpanded = expandedSubcategories.has(subcatKey)
+
+                            // Calculate subcategory total dynamically
+                            const subcatTotal = items
+                              .filter(item => item.is_included)
+                              .reduce((sum, item) => sum + item.computed_total, 0)
 
                             return (
-                              <div key={item.id} className="grid grid-cols-12 gap-2 px-4 py-2.5 hover:bg-slate-850 transition-colors text-sm">
-                                {/* Status */}
-                                <div className="col-span-2">
-                                  <select
-                                    value={state.status}
-                                    onChange={(e) => handleItemStatusChange(item.id, e.target.value as InclusionStatus)}
-                                    className={`w-full bg-slate-800 border rounded text-xs py-1 px-2 focus:outline-none focus:ring-1 ${isIncluded
-                                      ? 'border-emerald-600 text-emerald-400 focus:ring-emerald-500'
-                                      : 'border-slate-700 text-slate-400 focus:ring-brand-500'
-                                      }`}
-                                  >
-                                    <option value="not_required">Not Required</option>
-                                    <option value="included">Included</option>
-                                  </select>
-                                </div>
+                              <div key={subcatKey}>
+                                {/* Subcategory Header */}
+                                <button
+                                  onClick={() => {
+                                    const next = new Set(expandedSubcategories)
+                                    next.has(subcatKey) ? next.delete(subcatKey) : next.add(subcatKey)
+                                    setExpandedSubcategories(next)
+                                  }}
+                                  className="w-full flex items-center justify-between px-4 py-2 bg-slate-850 hover:bg-slate-800 transition-colors"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {isSubcatExpanded ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
+                                    <span className="text-xs font-medium text-slate-300">{subcatName}</span>
+                                  </div>
+                                  {subcatTotal > 0 && (
+                                    <span className="text-xs text-emerald-400">
+                                      ${subcatTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                                    </span>
+                                  )}
+                                </button>
 
-                                {/* Code */}
-                                <div className="col-span-1 text-slate-500 text-xs truncate">{item.code}</div>
-
-                                {/* Description */}
-                                <div className="col-span-3 text-white truncate">{item.name}</div>
-
-                                {/* Unit */}
-                                <div className="col-span-1 text-slate-400 text-xs">{item.unit}</div>
-
-                                {/* Qty */}
-                                <div className="col-span-1">
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={state.qty}
-                                    onChange={(e) => handleItemQtyChange(item.id, parseInt(e.target.value) || 1)}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded text-xs text-white py-1 px-2 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                                  />
-                                </div>
-
-                                {/* Rate */}
-                                <div className="col-span-2 text-slate-300 text-xs">
-                                  ${item.base_price.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </div>
-
-                                {/* Adj. */}
-                                <div className="col-span-1 text-slate-500 text-xs">—</div>
-
-                                {/* Total */}
-                                <div className={`col-span-1 text-right font-medium ${isIncluded ? 'text-emerald-400' : 'text-slate-500'}`}>
-                                  ${total.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </div>
+                                {/* Subcategory Items */}
+                                {isSubcatExpanded && items.map((item) => {
+                                  return (
+                                    <QuoteItemRow
+                                      key={item.id}
+                                      computedItem={item}
+                                      scope={scope}
+                                      handleItemStatusChange={handleItemStatusChange}
+                                      handleItemQtyChange={handleItemQtyChange}
+                                    />
+                                  )
+                                })}
                               </div>
                             )
                           })}
@@ -510,7 +987,7 @@ export default function QuoteEditorPage() {
         </div>
 
         {/* RIGHT SIDE: Quote Summary */}
-        <div className="w-[280px] border-l border-slate-800 bg-slate-900 p-6">
+        <div className="w-[220px] border-l border-slate-800 bg-slate-900 p-4 shrink-0">
           <h3 className="text-lg font-semibold text-white mb-4">Quote Summary</h3>
 
           <div className="space-y-4">
@@ -522,11 +999,21 @@ export default function QuoteEditorPage() {
               </span>
             </div>
 
+            {/* Rebates */}
+            {totals.rebateTotal !== 0 && (
+              <div className="flex justify-between items-center py-2 border-b border-slate-800 text-emerald-400">
+                <span className="text-sm">Rebates (ex GST)</span>
+                <span className="text-sm font-medium">
+                  ${totals.rebateTotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
+
             {/* Net */}
             <div className="flex justify-between items-center py-2 border-b border-slate-800">
               <span className="text-sm text-slate-400">Net (ex GST)</span>
               <span className="text-sm text-white font-medium">
-                ${totals.subtotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${totals.netBeforeGST.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
 
@@ -539,7 +1026,7 @@ export default function QuoteEditorPage() {
             </div>
 
             {/* Total */}
-            <div className="flex justify-between items-center py-3 bg-slate-800 -mx-6 px-6 rounded">
+            <div className="flex justify-between items-center py-3 bg-slate-800 -mx-4 px-4 rounded">
               <span className="text-base font-semibold text-white">Total (inc GST)</span>
               <span className="text-lg font-bold text-emerald-400">
                 ${totals.total.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -551,3 +1038,4 @@ export default function QuoteEditorPage() {
     </div>
   )
 }
+ 

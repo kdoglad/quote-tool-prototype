@@ -104,7 +104,6 @@ const SPEC_TABLES = [
   { cat: 'battery_inverter',      table: 'battery_inverter_specs' },
   { cat: 'bessdb',                table: 'bessdb_specs' },
   { cat: 'ac_cabling',            table: 'ac_cabling_specs' },
-  { cat: 'dc_cabling',            table: 'dc_cabling_specs' },
   { cat: 'cabling_addons',        table: 'cabling_addons_specs' },
   { cat: 'switch_gear',           table: 'switch_gear_specs' },
   { cat: 'ac_breaker',            table: 'ac_breaker_specs' },

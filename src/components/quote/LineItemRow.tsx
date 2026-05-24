@@ -3,23 +3,22 @@ import { MoreVertical, Copy, Trash2, RotateCcw, AlertCircle, CheckCircle } from 
 import { clsx } from 'clsx'
 import type { ComputedLineItem, PartialFormulaScope, ModifierType, InclusionStatus } from '../../types/domain.types'
 import FormulaTooltip from './FormulaTooltip'
-import ModifierCell from './ModifierCell'
 import { validateFormula, evaluateFormula, buildScope } from '../../lib/formulaEngine'
 import { DEFAULT_SCOPE_VALUES } from '../../lib/constants'
 
 const INCLUSION_OPTIONS: { value: InclusionStatus; label: string }[] = [
-  { value: 'included',         label: 'Included' },
-  { value: 'not_required',     label: 'Not Required' },
-  { value: 'provisional_sum',  label: 'Provisional Sum' },
+  { value: 'included', label: 'Included' },
+  { value: 'not_required', label: 'Not Required' },
+  { value: 'provisional_sum', label: 'Provisional Sum' },
   { value: 'appears_adequate', label: 'Appears Adequate' },
 ]
 
 function statusStyle(status: InclusionStatus) {
   switch (status) {
-    case 'included':          return 'bg-emerald-950 border-emerald-800/60 text-emerald-300'
-    case 'not_required':      return 'bg-slate-900 border-slate-700 text-slate-500'
-    case 'provisional_sum':   return 'bg-amber-950 border-amber-800/60 text-amber-300'
-    case 'appears_adequate':  return 'bg-blue-950 border-blue-800/60 text-blue-300'
+    case 'included': return 'bg-emerald-950 border-emerald-800/60 text-emerald-300'
+    case 'not_required': return 'bg-slate-900 border-slate-700 text-slate-500'
+    case 'provisional_sum': return 'bg-amber-950 border-amber-800/60 text-amber-300'
+    case 'appears_adequate': return 'bg-blue-950 border-blue-800/60 text-blue-300'
   }
 }
 
@@ -121,11 +120,11 @@ function InlineFormulaEditor({
               ? <><AlertCircle className="w-3 h-3 text-red-400" /><span className="text-red-400">{preview.error}</span></>
               : preview !== null
                 ? <><CheckCircle className="w-3 h-3 text-green-400" />
-                    <span className="text-green-400">
-                      = ${preview.value.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                    <span className="text-slate-600">(live scope)</span>
-                  </>
+                  <span className="text-green-400">
+                    = ${preview.value.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-slate-600">(live scope)</span>
+                </>
                 : null
           }
         </div>
@@ -151,6 +150,145 @@ function InlineFormulaEditor({
   )
 }
 
+const SPEC_FIELD_MAPPINGS: Record<string, { label: string; key: string }[]> = {
+  ac_breaker: [
+    { label: 'Rating', key: 'rating_a' },
+    { label: 'Name', key: 'name' },
+    { label: 'Breaker Type', key: 'breaker_type' }
+  ],
+  ac_cabling: [
+    { label: 'Size', key: 'size_mm2' },
+    { label: 'Inclusion', key: 'inclusion' },
+    { label: 'Conductor', key: 'conductor_material' }
+  ],
+  ac_combiner: [
+    { label: 'Combiner Name', key: 'ac_combiner_name' },
+    { label: 'Notes', key: 'notes' }
+  ],
+  additional_racking: [
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Unit', key: 'unit' }
+  ],
+  batteries: [
+    { label: 'Brand', key: 'brand' },
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Nominal kWh', key: 'nominal_kwh' }
+  ],
+  battery_inverter: [
+    { label: 'Brand', key: 'brand' },
+    { label: 'kVA', key: 'kva' },
+    { label: 'Item Name', key: 'item_name' }
+  ],
+  bessdb: [
+    { label: 'BESSDB Type', key: 'bessdb_type' }
+  ],
+  cabling_addons: [
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Addon Type', key: 'addon_type' }
+  ],
+  dc_cabling: [
+    { label: 'Size', key: 'size_mm2' },
+    { label: 'Inclusion', key: 'inclusion' },
+    { label: 'Conductor', key: 'conductor_material' }
+  ],
+  dc_combiner: [
+    { label: 'Combiner Name', key: 'dc_combiner_name' },
+    { label: 'Notes', key: 'notes' }
+  ],
+  dc_twin_cabling: [
+    { label: 'Size', key: 'size_twin_dc_cable_mm' },
+    { label: 'Notes', key: 'notes' }
+  ],
+  grid_protection: [
+    { label: 'DNSP', key: 'dnsp' },
+    { label: 'Req. Over', key: 'required_over_kva' },
+    { label: 'Export Limit Enforced', key: 'is_export_limit_enforced' }
+  ],
+  grid_connection: [
+    { label: 'DNSP', key: 'dnsp' },
+    { label: 'Low Size', key: 'low_size_kva' },
+    { label: 'High Size', key: 'high_side_kva' }
+  ],
+  harm_filtering: [
+    { label: 'Item Type', key: 'item_type' }
+  ],
+  install: [
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Install Item', key: 'install_item' },
+    { label: 'Unit', key: 'unit' }
+  ],
+  inverters: [
+    { label: 'Brand', key: 'brand' },
+    { label: 'Model', key: 'model' },
+    { label: 'Warranty Years', key: 'warranty_years' }
+  ],
+  inverter_station: [
+    { label: 'Station', key: 'inverter_station' }
+  ],
+  lifting: [
+    { label: 'Name', key: 'name' },
+    { label: 'Lifting Type', key: 'lifting_type' },
+    { label: 'Time', key: 'time' }
+  ],
+  monitoring_addons: [
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Unit', key: 'unit' }
+  ],
+  monitoring_warranty: [
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Unit', key: 'unit' }
+  ],
+  netnada: [
+    { label: 'Plan Type', key: 'plan_type' },
+    { label: 'Payment Plan', key: 'payment_plan' }
+  ],
+  netnada_addons: [
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Payment Plan', key: 'payment_plan' }
+  ],
+  optimisers: [
+    { label: 'Size VA', key: 'size_va' },
+    { label: 'Optimiser Name', key: 'optimiser_name' }
+  ],
+  panels: [
+    { label: 'Brand', key: 'brand' },
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Item Name', key: 'item_name' }
+  ],
+  pfc: [
+    { label: 'PFC Type', key: 'pfc_type' }
+  ],
+  prelim_general: [
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Item Name', key: 'item_name' }
+  ],
+  pvdb: [
+    { label: 'PVDB Type', key: 'pvdb_type' }
+  ],
+  racking: [
+    { label: 'Racking Type', key: 'racking_type' }
+  ],
+  safety: [
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Item Name', key: 'item_name' },
+    { label: 'Unit', key: 'unit' }
+  ],
+  switch_gear: [
+    { label: 'Item Type', key: 'item_type' },
+    { label: 'Item Name', key: 'item_name' }
+  ],
+  travel_accoms_freight: [
+    { label: 'Distance', key: 'distance_frm_city_center' },
+    { label: 'Rates', key: 'travel_rates' }
+  ],
+  witness_injection: [
+    { label: 'DNSP', key: 'dnsp' },
+    { label: 'Req. Over', key: 'required_over_kva' }
+  ]
+};
+
 export default function LineItemRow({
   item,
   scope,
@@ -158,7 +296,6 @@ export default function LineItemRow({
   readOnly,
   onStatusChange,
   onQtyChange,
-  onModifierChange,
   onDuplicate,
   onRemove,
   onOptionChange,
@@ -166,7 +303,12 @@ export default function LineItemRow({
 }: LineItemRowProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [formulaOpen, setFormulaOpen] = useState(false)
+  const [qtyStr, setQtyStr] = useState(String(item.qty))
   const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setQtyStr(String(item.qty))
+  }, [item.qty])
 
   const showDelta = comparisonTotal !== undefined
   const delta = showDelta ? item.computed_total - comparisonTotal! : 0
@@ -262,6 +404,22 @@ export default function LineItemRow({
           <FormulaTooltip item={item} scope={scope} />
         </div>
 
+        {/* Spec fields render */}
+        {item.specData && SPEC_FIELD_MAPPINGS[item.type_value || ''] && (
+          <div className="flex flex-wrap gap-x-2 gap-y-1 mt-1 text-[11px] text-slate-400">
+            {SPEC_FIELD_MAPPINGS[item.type_value || ''].map((field) => {
+              const val = item.specData?.[field.key];
+              if (val === undefined || val === null || val === '') return null;
+              const displayVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val);
+              return (
+                <span key={field.key} className="bg-slate-800/40 px-1.5 py-0.5 rounded border border-slate-750/30">
+                  <span className="text-slate-500 font-medium">{field.label}:</span> {displayVal}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
         {/* Inline formula editor */}
         {formulaOpen && !readOnly && (
           <InlineFormulaEditor
@@ -297,8 +455,8 @@ export default function LineItemRow({
                         {opt.label}
                         {opt.modifier_value !== 0
                           ? ` (${opt.modifier_type === 'percent'
-                              ? `${opt.modifier_value > 0 ? '+' : ''}${opt.modifier_value}%`
-                              : `${opt.modifier_value > 0 ? '+' : ''}$${Math.abs(opt.modifier_value).toLocaleString('en-AU', { maximumFractionDigits: 0 })}`})`
+                            ? `${opt.modifier_value > 0 ? '+' : ''}${opt.modifier_value}%`
+                            : `${opt.modifier_value > 0 ? '+' : ''}$${Math.abs(opt.modifier_value).toLocaleString('en-AU', { maximumFractionDigits: 0 })}`})`
                           : ''}
                       </option>
                     ))}
@@ -325,8 +483,22 @@ export default function LineItemRow({
           type="number"
           min="0"
           step="0.01"
-          value={item.qty}
-          onChange={(e) => onQtyChange(parseFloat(e.target.value) || 0)}
+          value={qtyStr}
+          onChange={(e) => {
+            const val = e.target.value;
+            setQtyStr(val);
+            const parsed = parseFloat(val);
+            if (!isNaN(parsed)) {
+              onQtyChange(parsed);
+            } else {
+              onQtyChange(0);
+            }
+          }}
+          onBlur={() => {
+            if (qtyStr.trim() === '') {
+              setQtyStr(String(item.qty));
+            }
+          }}
           disabled={readOnly || isExcluded}
           className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white font-mono
                      focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-40 text-right"
@@ -336,18 +508,6 @@ export default function LineItemRow({
       {/* Base unit rate */}
       <td className="pr-3 py-2 text-right font-mono text-slate-400 text-xs w-24 align-top pt-2.5">
         ${item.base_unit_price.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-      </td>
-
-      {/* Modifier */}
-      <td className="pr-3 py-2 w-24 text-center align-top">
-        <ModifierCell
-          itemName={item.name}
-          modifierType={item.modifier_type}
-          modifierValue={item.modifier_value}
-          modifierNote={item.modifier_note ?? ''}
-          onSave={onModifierChange}
-          disabled={readOnly || isExcluded}
-        />
       </td>
 
       {/* Total */}
@@ -437,3 +597,4 @@ export default function LineItemRow({
     </tr>
   )
 }
+ 

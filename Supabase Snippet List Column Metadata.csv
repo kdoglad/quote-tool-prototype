@@ -415,8 +415,8 @@ quotes,15,nmi,text,YES,null
 quotes,16,dnsp,text,YES,null
 quotes,17,system_kw,numeric,YES,null
 quotes,18,system_kva,numeric,YES,null
-quotes,19,has_bess,boolean,YES,FALSE
-quotes,20,has_ev,boolean,YES,FALSE
+quotes,19,has_bess,boolean,YES,false
+quotes,20,has_ev,boolean,YES,false
 quotes,21,existing_solar_kw,numeric,YES,0
 quotes,22,valid_until,date,YES,null
 quotes,23,internal_notes,text,YES,null
@@ -487,7 +487,7 @@ user_profiles,1,id,uuid,NO,null
 user_profiles,2,role,text,NO,null
 user_profiles,3,full_name,text,NO,null
 user_profiles,4,email,text,NO,null
-user_profiles,5,is_active,boolean,NO,TRUE
+user_profiles,5,is_active,boolean,NO,true
 user_profiles,6,created_at,timestamp with time zone,NO,now()
 user_profiles,7,updated_at,timestamp with time zone,NO,now()
 user_profiles,8,initials,text,YES,null

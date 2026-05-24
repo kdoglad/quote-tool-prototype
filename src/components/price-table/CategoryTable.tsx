@@ -110,8 +110,6 @@ export default function CategoryTable({ typeValue, items, isDraft, onEdit, onDel
         return <><th className="px-4 py-2 text-right">Combiner Price</th></>
       case 'dc_combiner':
         return <><th className="px-4 py-2 text-left">Combiner Name</th><th className="px-4 py-2 text-right">Combiner Price/Unit</th></>
-      case 'dc_cabling':
-        return <><th className="px-4 py-2 text-right">Single Core Price/m</th><th className="px-4 py-2 text-right">Size (mm²)</th><th className="px-4 py-2 text-left">Material</th><th className="px-4 py-2 text-right">4C+E Price/m</th></>
       case 'dc_twin_cabling':
         return <><th className="px-4 py-2 text-right">Size (mm)</th><th className="px-4 py-2 text-right">Price/mm</th></>
       case 'cabling_addons':
@@ -199,7 +197,6 @@ export default function CategoryTable({ typeValue, items, isDraft, onEdit, onDel
       case 'ac_cabling': return <><td className="px-4 py-2.5 font-mono text-brand-400 text-xs text-right">{r(d.single_core_price_per_meter, '$')}</td><td className="px-4 py-2.5 font-mono text-brand-400 text-xs text-right">{r(d.size_mm2, 'mm2')}</td><td className="px-4 py-2.5 text-slate-300">{r(d.conductor_material)}</td><td className="px-4 py-2.5 font-mono text-brand-400 text-xs text-right">{r(d['4c_plus_earth_price_per_meter'], '$')}</td></>
       case 'ac_combiner': return <><td className="px-4 py-2.5 font-mono text-brand-400 text-xs text-right">{r(d.ac_combiner_price_per_unit, '$')}</td></>
       case 'dc_combiner': return <><td className="px-4 py-2.5 text-slate-300">{r(d.dc_combiner_name)}</td><td className="px-4 py-2.5 font-mono text-brand-400 text-xs text-right">{r(d.dc_combiner_price_per_unit, '$')}</td></>
-      case 'dc_cabling': return <><td className="px-4 py-2.5 font-mono text-brand-400 text-xs text-right">{r(d.single_core_price_per_meter, '$')}</td><td className="px-4 py-2.5 font-mono text-brand-400 text-xs text-right">{r(d.size_mm2, 'mm2')}</td><td className="px-4 py-2.5 text-slate-300">{r(d.conductor_material)}</td><td className="px-4 py-2.5 font-mono text-brand-400 text-xs text-right">{r(d['4c_plus_earth_price_per_meter'], '$')}</td></>
       case 'dc_twin_cabling': return <><td className="px-4 py-2.5 font-mono text-brand-400 text-xs text-right">{r(d.size_twin_dc_cable_mm)}</td><td className="px-4 py-2.5 font-mono text-brand-400 text-xs text-right">{r(d.twin_dc_cable_price_per_mm, '$')}</td></>
       case 'cabling_addons': return <><td className="px-4 py-2.5 text-slate-300">{r(d.addon_type)}</td><td className="px-4 py-2.5 font-mono text-brand-400 text-xs text-right">{r(d.cost_per_meter, '$')}</td></>
       case 'switch_gear': return <><td className="px-4 py-2.5 text-slate-300">{r(d.item_type)}</td><td className="px-4 py-2.5 font-mono text-brand-400 text-xs text-right">{r(d.total_price, '$')}</td></>

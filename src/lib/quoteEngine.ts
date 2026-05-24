@@ -168,6 +168,9 @@ export interface LineItem {
     salesRate: number;
     salePerWatt: number;
     status: ItemStatus;
+    catalog_id?: string | null;
+    item_code?: string | null;
+    unit?: string | null;
 }
 
 export interface CategorySubtotal {
@@ -221,85 +224,25 @@ export interface QuoteResult {
 }
 
 // ============================================================================
-// FORMULA EVALUATION ENGINE
-// ============================================================================
-
-class FormulaEvaluator {
-    private variables: Map<string, number> = new Map();
-
-    setVariable(name: string, value: number): void {
-        this.variables.set(name.toUpperCase(), value);
-    }
-
-    getVariable(name: string): number {
-        return this.variables.get(name.toUpperCase()) || 0;
-    }
-
-    evaluate(formula: string): number {
-        try {
-            // Remove leading '=' if present
-            let expr = formula.trim();
-            if (expr.startsWith('=')) {
-                expr = expr.substring(1);
-            }
-
-            // Replace cell references with values
-            // This is a simplified implementation - in production, use a proper formula parser
-            expr = this.replaceVariables(expr);
-
-            // Evaluate the expression
-            // Note: Using Function constructor for evaluation - in production, use a safe parser
-            const result = this.safeEval(expr);
-            return typeof result === 'number' ? result : 0;
-        } catch (error) {
-            console.error('Formula evaluation error:', error);
-            return 0;
-        }
-    }
-
-    private replaceVariables(expr: string): string {
-        // Replace variable names with their values
-        this.variables.forEach((value, name) => {
-            const regex = new RegExp(`\\b${name}\\b`, 'gi');
-            expr = expr.replace(regex, value.toString());
-        });
-        return expr;
-    }
-
-    private safeEval(expr: string): number {
-        // Simple arithmetic evaluation
-        // Replace Excel operators with JavaScript operators
-        expr = expr.replace(/\^/g, '**'); // Power operator
-
-        try {
-            // Use Function constructor for safer evaluation than eval()
-            const func = new Function('return ' + expr);
-            return func();
-        } catch {
-            return 0;
-        }
-    }
-}
-
-// ============================================================================
 // CORE CALCULATION FUNCTIONS
 // ============================================================================
 
 /**
  * Calculate STC (Small-scale Technology Certificate) rebate
+ * Based on Excel formulas from SOLAR sheet and Rebates sheet
  */
 function calculateStcRebate(
     systemSizeKw: number,
     installYear: number,
-    installMonth: number,
+    _installMonth: number,
     state: string,
-    stcPrice: number
+    stcPrice: number,
+    existingSolarKw: number = 0
 ): RebateCalculation {
-    // Deeming period calculation (reduces each year until 2030)
-    const currentYear = installYear;
-    const deemingPeriodYears = Math.max(0, 2031 - currentYear);
+    // Deeming period: 2031 - install year (Excel: L18 = 2031-F20)
+    const deemingPeriodYears = Math.max(0, 2031 - installYear);
 
-    // Zone rating (simplified - NSW/ACT = 1.382, QLD = 1.536, etc.)
+    // Zone rating factors from Excel Rebates sheet
     const zoneRatings: Record<string, number> = {
         'NSW': 1.382,
         'ACT': 1.382,
@@ -313,16 +256,26 @@ function calculateStcRebate(
 
     const zoneRating = zoneRatings[state] || 1.382;
 
-    // STC calculation: System Size (kW) × Zone Rating × Deeming Period
-    const stcQuantity = systemSizeKw * zoneRating * deemingPeriodYears;
+    // Claimed STC capacity (Excel L17):
+    // =IF(F13>100,IF(F19="Yes",MIN(100,100-F22),0),MIN(100-F22,F13))
+    let claimedCapacity: number;
+    if (systemSizeKw > 100) {
+        claimedCapacity = Math.min(100, 100 - existingSolarKw);
+    } else {
+        claimedCapacity = Math.min(100 - existingSolarKw, systemSizeKw);
+    }
+    claimedCapacity = Math.max(0, claimedCapacity);
+
+    // STC calculation: Claimed Capacity × Zone Rating × Deeming Period
+    const stcQuantity = claimedCapacity * zoneRating * deemingPeriodYears;
     const stcDiscountExGst = stcQuantity * stcPrice;
 
     return {
-        claimedStcCapacityKwp: systemSizeKw,
+        claimedStcCapacityKwp: claimedCapacity,
         deemingPeriodYears,
         stcQuantity: Math.round(stcQuantity),
         stcDiscountExGst,
-        veecTraderFeeExGst: 0, // VEEC only applies to Victoria
+        veecTraderFeeExGst: 0,
         upfrontVeecDiscountExGst: 0,
         totalUpfrontRebateExGst: stcDiscountExGst,
     };
@@ -592,13 +545,14 @@ export function calculateQuote(
     const profitMargin = salePrice - totalInstallCost;
     const grossProfitPercent = (profitMargin / salePrice) * 100;
 
-    // Calculate rebates
+    // Calculate rebates with existing solar consideration
     const rebates = calculateStcRebate(
         inputs.system.totalSystemSizeKw,
         inputs.installation.installYear,
         inputs.installation.installMonth,
         inputs.client.state,
-        inputs.pricing.stcPrice
+        inputs.pricing.stcPrice,
+        inputs.system.existingPvSizeKw || 0
     );
 
     // Calculate final pricing

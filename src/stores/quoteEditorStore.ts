@@ -68,6 +68,8 @@ interface QuoteEditorState {
   /** Add a custom line item from the CustomLineItemForm. */
   addCustomItem: (item: CustomLineItem) => void
 
+  setLineItems: (items: QuoteLineItemState[]) => void
+
   markSaved: () => void
   resetStore: () => void
 }
@@ -126,6 +128,8 @@ export const useQuoteEditorStore = create<QuoteEditorState>()(
       lineItems: [],
 
       setQuoteId: (id) => set({ quoteId: id }),
+
+      setLineItems: (items) => set({ lineItems: items, isDirty: true }),
 
       setSiteDetails: (data) =>
         set((s) => ({
