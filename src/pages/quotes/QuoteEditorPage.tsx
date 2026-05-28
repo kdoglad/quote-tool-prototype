@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo, Fragment } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Save, ArrowLeft, ChevronDown, ChevronRight, Calculator, TrendingUp, Clock } from 'lucide-react'
+import { Save, ArrowLeft, ChevronDown, ChevronRight, Calculator, TrendingUp, Clock, Settings, Zap, Wrench } from 'lucide-react'
 import { useQuoteEditorStore } from '../../stores/quoteEditorStore'
 import { usePriceItems } from '../../hooks/usePriceItems'
 import { usePriceVersions } from '../../hooks/usePriceVersions'
@@ -89,6 +89,10 @@ export default function QuoteEditorPage() {
     battery_pcm: 'None',
     hv_customer_pcm: 'No',
   })
+
+  const [isPcmExpanded, setIsPcmExpanded] = useState(false)
+  const [isCablingExpanded, setIsCablingExpanded] = useState(false)
+  const [isTrenchingExpanded, setIsTrenchingExpanded] = useState(false)
 
   const [projectName, setProjectName] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Prelim']))
@@ -675,84 +679,137 @@ export default function QuoteEditorPage() {
             </div>
 
             {/* Project Complexity Modifiers */}
-            <div className="pt-4 border-t border-slate-800 mt-6">
-              <h3 className="text-sm font-medium text-slate-300 mb-3 uppercase tracking-wider">Project Complexity Modifiers</h3>
-              <div className="space-y-3">
-                <Select label="1. Racking" value={installInfo.racking || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking: e.target.value }))}
-                  options={['Base Tin Installation', 'Base Tile Installation', 'Ground Mounted (Fixed Tilt)', 'Ground Mounted (Single Axis)', 'Concrete Roof Mounted (not including waterproofing)', 'Ballasted System', 'Floating (ex. Anchors and Extras)', 'Carpark'].map(v => ({ value: v, label: v }))} />
-                <Select label="2. Racking 2" value={installInfo.racking2 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking2: e.target.value }))}
-                  options={['Flush Mounted', 'Frameless', 'Klip Lock Addition', 'Tilt Legs Addition', 'Wind Zone C/D', 'Klip Lock + Tilt Legs Addition', 'Klip Lock Addition + Wind Zone C/D', 'Tilt Legs + Wind Zone C/D Addition', 'Klip Lock + Tilt Legs Addition + Wind Zone C/D Addition'].map(v => ({ value: v, label: v }))} />
-                <Select label="3. System Complexity" value={installInfo.system_complexity || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, system_complexity: e.target.value }))}
-                  options={['Standard', 'Complex', 'Multi Roof', 'Large Scale Roof', 'Ground mounted mechanical + electrical'].map(v => ({ value: v, label: v }))} />
-                <Select label="4. Client co-operativeness" value={installInfo.client_cooperativeness || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, client_cooperativeness: e.target.value }))}
-                  options={['Very Co-operative', 'Average', 'Difficult', 'Very Difficult', 'CUB'].map(v => ({ value: v, label: v }))} />
-                <Select label="5. Builders" value={installInfo.builders || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, builders: e.target.value }))}
-                  options={['Not Involved', 'Involved', 'Heavily or Continuously Involved'].map(v => ({ value: v, label: v }))} />
-                <Select label="6/7. Architects/Consultants" value={installInfo.architects_consultants || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, architects_consultants: e.target.value }))}
-                  options={['Not Involved', 'Involved'].map(v => ({ value: v, label: v }))} />
-                <Select label="8. PPA Funders" value={installInfo.ppa_funders || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ppa_funders: e.target.value }))}
-                  options={['Not Involved', 'Clearsky', 'Solarbay/Green Peak'].map(v => ({ value: v, label: v }))} />
-                <Select label="9. Location" value={installInfo.location || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, location: e.target.value }))}
-                  options={['Zone1', 'Zone2', 'Zone3', 'Zone4', 'Zone5', 'Zone6', 'Zone7', 'Zone8', 'Darwin', 'Cairns'].map(v => ({ value: v, label: v }))} />
-                <Select label="10. Install Timeline" value={installInfo.install_timeline || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, install_timeline: e.target.value }))}
-                  options={['Unconstrained', 'Rushed', 'Very Rushed'].map(v => ({ value: v, label: v }))} />
-                <Select label="11. DNSP" value={installInfo.dnsp_override || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dnsp_override: e.target.value }))}
-                  options={['No Match', 'Endeavour', 'Essential Energy', 'Ausgrid', 'Ausnet', 'Citi Power - Powercor', 'Jemena', 'United Energy', 'SAPN', 'TasNetworks', 'Power and Water Corporation', 'Evoenergy', 'Ergon', 'Energex', 'Horizon Power', 'Western Power'].map(v => ({ value: v, label: v }))} />
-                <Select label="12. Large/Small Team" value={installInfo.large_small_team || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, large_small_team: e.target.value }))}
-                  options={['Large', 'Small'].map(v => ({ value: v, label: v }))} />
-                <Select label="13. STC/LGC Split" value={installInfo.stc_lgc_split || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, stc_lgc_split: e.target.value }))}
-                  options={['No', 'Yes'].map(v => ({ value: v, label: v }))} />
-                <Select label="14. Switchboard Mods" value={installInfo.switchboard_complexity || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, switchboard_complexity: e.target.value }))}
-                  options={['Appears to be Adequate', 'May Require Upgrade (Excluded from quote)', 'Requires extension/New cabinet'].map(v => ({ value: v, label: v }))} />
-                <Select label="15. Optimisers" value={installInfo.optimisers || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, optimisers: e.target.value }))}
-                  options={['Required', 'Not Required'].map(v => ({ value: v, label: v }))} />
-                <Select label="16. Transformer" value={installInfo.transformer || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, transformer: e.target.value }))}
-                  options={['Not Required', 'Required'].map(v => ({ value: v, label: v }))} />
-                <Select label="17. Rollout" value={installInfo.rollout || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, rollout: e.target.value }))}
-                  options={['No (1-2 sites)', 'Yes (3-5 sites)', 'Yes (5-20 sites)', 'Yes (20+ sites)'].map(v => ({ value: v, label: v }))} />
-                <Select label="18. Safety" value={installInfo.safety || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, safety: e.target.value }))}
-                  options={['Standard', 'Rigorous', 'Very Rigorous'].map(v => ({ value: v, label: v }))} />
-                <Select label="19. MISC 1" value={installInfo.misc1 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, misc1: e.target.value }))}
-                  options={['None', 'DA', 'Mine Site', 'Tricky Cable Run', 'AFC Not In Scope', 'Building Certification', 'Carport (SCP)', 'Carport (Other)', 'Building Height >20m', 'GSES', 'Generator on site'].map(v => ({ value: v, label: v }))} />
-                <Select label="20. MISC 2" value={installInfo.misc2 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, misc2: e.target.value }))}
-                  options={['None', 'DA', 'Mine Site', 'Tricky Cable Run', 'AFC Not In Scope', 'Building Certification', 'Carport (SCP)', 'Carport (Other)', 'Building Height >20m', 'GSES', 'Generator on site'].map(v => ({ value: v, label: v }))} />
-                <Select label="21. Battery" value={installInfo.battery_pcm || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, battery_pcm: e.target.value }))}
-                  options={['None', 'Included'].map(v => ({ value: v, label: v }))} />
-                <Select label="22. HV Customer" value={installInfo.hv_customer_pcm || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, hv_customer_pcm: e.target.value }))}
-                  options={['No', 'Unknown', 'Yes'].map(v => ({ value: v, label: v }))} />
-              </div>
+            <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-4 shadow-sm mt-6">
+              <button 
+                onClick={() => setIsPcmExpanded(!isPcmExpanded)}
+                className="w-full flex items-center justify-between mb-2 group"
+              >
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-brand-400" />
+                  Project Complexity Modifiers
+                </h3>
+                {isPcmExpanded ? <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" /> : <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />}
+              </button>
+              
+              {isPcmExpanded && (
+                <div className="space-y-3">
+                  <Select label="1. Racking" value={installInfo.racking || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking: e.target.value }))}
+                    options={['Base Tin Installation', 'Base Tile Installation', 'Ground Mounted (Fixed Tilt)', 'Ground Mounted (Single Axis)', 'Concrete Roof Mounted (not including waterproofing)', 'Ballasted System', 'Floating (ex. Anchors and Extras)', 'Carpark'].map(v => ({ value: v, label: v }))} />
+                  <Select label="2. Racking 2" value={installInfo.racking2 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking2: e.target.value }))}
+                    options={['Flush Mounted', 'Frameless', 'Klip Lock Addition', 'Tilt Legs Addition', 'Wind Zone C/D', 'Klip Lock + Tilt Legs Addition', 'Klip Lock Addition + Wind Zone C/D', 'Tilt Legs + Wind Zone C/D Addition', 'Klip Lock + Tilt Legs Addition + Wind Zone C/D Addition'].map(v => ({ value: v, label: v }))} />
+                  <Select label="3. System Complexity" value={installInfo.system_complexity || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, system_complexity: e.target.value }))}
+                    options={['Standard', 'Complex', 'Multi Roof', 'Large Scale Roof', 'Ground mounted mechanical + electrical'].map(v => ({ value: v, label: v }))} />
+                  <Select label="4. Client co-operativeness" value={installInfo.client_cooperativeness || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, client_cooperativeness: e.target.value }))}
+                    options={['Very Co-operative', 'Average', 'Difficult', 'Very Difficult', 'CUB'].map(v => ({ value: v, label: v }))} />
+                  <Select label="5. Builders" value={installInfo.builders || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, builders: e.target.value }))}
+                    options={['Not Involved', 'Involved', 'Heavily or Continuously Involved'].map(v => ({ value: v, label: v }))} />
+                  <Select label="6/7. Architects/Consultants" value={installInfo.architects_consultants || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, architects_consultants: e.target.value }))}
+                    options={['Not Involved', 'Involved'].map(v => ({ value: v, label: v }))} />
+                  <Select label="8. PPA Funders" value={installInfo.ppa_funders || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ppa_funders: e.target.value }))}
+                    options={['Not Involved', 'Clearsky', 'Solarbay/Green Peak'].map(v => ({ value: v, label: v }))} />
+                  <Select label="9. Location" value={installInfo.location || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, location: e.target.value }))}
+                    options={['Zone1', 'Zone2', 'Zone3', 'Zone4', 'Zone5', 'Zone6', 'Zone7', 'Zone8', 'Darwin', 'Cairns'].map(v => ({ value: v, label: v }))} />
+                  <Select label="10. Install Timeline" value={installInfo.install_timeline || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, install_timeline: e.target.value }))}
+                    options={['Unconstrained', 'Rushed', 'Very Rushed'].map(v => ({ value: v, label: v }))} />
+                  <Select label="11. DNSP" value={installInfo.dnsp_override || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dnsp_override: e.target.value }))}
+                    options={['No Match', 'Endeavour', 'Essential Energy', 'Ausgrid', 'Ausnet', 'Citi Power - Powercor', 'Jemena', 'United Energy', 'SAPN', 'TasNetworks', 'Power and Water Corporation', 'Evoenergy', 'Ergon', 'Energex', 'Horizon Power', 'Western Power'].map(v => ({ value: v, label: v }))} />
+                  <Select label="12. Large/Small Team" value={installInfo.large_small_team || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, large_small_team: e.target.value }))}
+                    options={['Large', 'Small'].map(v => ({ value: v, label: v }))} />
+                  <Select label="13. STC/LGC Split" value={installInfo.stc_lgc_split || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, stc_lgc_split: e.target.value }))}
+                    options={['No', 'Yes'].map(v => ({ value: v, label: v }))} />
+                  <Select label="14. Switchboard Mods" value={installInfo.switchboard_complexity || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, switchboard_complexity: e.target.value }))}
+                    options={['Appears to be Adequate', 'May Require Upgrade (Excluded from quote)', 'Requires extension/New cabinet'].map(v => ({ value: v, label: v }))} />
+                  <Select label="15. Optimisers" value={installInfo.optimisers || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, optimisers: e.target.value }))}
+                    options={['Required', 'Not Required'].map(v => ({ value: v, label: v }))} />
+                  <Select label="16. Transformer" value={installInfo.transformer || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, transformer: e.target.value }))}
+                    options={['Not Required', 'Required'].map(v => ({ value: v, label: v }))} />
+                  <Select label="17. Rollout" value={installInfo.rollout || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, rollout: e.target.value }))}
+                    options={['No (1-2 sites)', 'Yes (3-5 sites)', 'Yes (5-20 sites)', 'Yes (20+ sites)'].map(v => ({ value: v, label: v }))} />
+                  <Select label="18. Safety" value={installInfo.safety || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, safety: e.target.value }))}
+                    options={['Standard', 'Rigorous', 'Very Rigorous'].map(v => ({ value: v, label: v }))} />
+                  <Select label="19. MISC 1" value={installInfo.misc1 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, misc1: e.target.value }))}
+                    options={['None', 'DA', 'Mine Site', 'Tricky Cable Run', 'AFC Not In Scope', 'Building Certification', 'Carport (SCP)', 'Carport (Other)', 'Building Height >20m', 'GSES', 'Generator on site'].map(v => ({ value: v, label: v }))} />
+                  <Select label="20. MISC 2" value={installInfo.misc2 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, misc2: e.target.value }))}
+                    options={['None', 'DA', 'Mine Site', 'Tricky Cable Run', 'AFC Not In Scope', 'Building Certification', 'Carport (SCP)', 'Carport (Other)', 'Building Height >20m', 'GSES', 'Generator on site'].map(v => ({ value: v, label: v }))} />
+                  <Select label="21. Battery" value={installInfo.battery_pcm || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, battery_pcm: e.target.value }))}
+                    options={['None', 'Included'].map(v => ({ value: v, label: v }))} />
+                  <Select label="22. HV Customer" value={installInfo.hv_customer_pcm || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, hv_customer_pcm: e.target.value }))}
+                    options={['No', 'Unknown', 'Yes'].map(v => ({ value: v, label: v }))} />
+                </div>
+              )}
             </div>
 
             {/* Cabling Details */}
-            <div className="pt-4 border-t border-slate-800 mt-6">
-              <h3 className="text-sm font-medium text-slate-300 mb-3 uppercase tracking-wider">Cabling Details</h3>
-              <div className="space-y-3">
-                <Select label="DC Cabling Type" value={installInfo.dc_cabling_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cabling_type: e.target.value }))}
-                  options={[
-                    { value: 'No Match', label: 'No Match' },
-                    { value: '4mm2', label: '4mm2' },
-                    { value: '6mm2', label: '6mm2' }
-                  ]} />
-                <Select label="AC Inverter to PVDB Type" value={installInfo.ac_inverter_pvdb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_inverter_pvdb_type: e.target.value }))}
-                  options={[{ value: 'No Match', label: 'No Match' }, { value: 'Standard', label: 'Standard' }]} />
-                <Select label="AC PVDB to MSB Type" value={installInfo.ac_pvdb_msb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_pvdb_msb_type: e.target.value }))}
-                  options={[{ value: 'No Match', label: 'No Match' }, { value: 'Standard', label: 'Standard' }]} />
-                <Select label="Cable Tray Type" value={installInfo.cable_tray_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, cable_tray_type: e.target.value }))}
-                  options={[{ value: 'No Match', label: 'No Match' }, { value: 'Standard', label: 'Standard' }]} />
-              </div>
+            <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-4 shadow-sm mt-6">
+              <button 
+                onClick={() => setIsCablingExpanded(!isCablingExpanded)}
+                className="w-full flex items-center justify-between mb-2 group"
+              >
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-brand-400" />
+                  Cabling Details
+                </h3>
+                {isCablingExpanded ? <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" /> : <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />}
+              </button>
+              
+              {isCablingExpanded && (
+                <div className="space-y-3">
+                  <Select label="DC Cabling Type" value={installInfo.dc_cabling_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cabling_type: e.target.value }))}
+                    options={[
+                      { value: 'No Match', label: 'No Match' },
+                      { value: 'Included - Standard Cable', label: 'Included - Standard Cable' },
+                      { value: 'Included - Direct Buried', label: 'Included - Direct Buried' },
+                      { value: 'Not Included', label: 'Not Included' }
+                    ]} />
+                  <Select label="AC Inverter to PVDB Type" value={installInfo.ac_inverter_pvdb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_inverter_pvdb_type: e.target.value }))}
+                    options={[
+                      { value: 'No Match', label: 'No Match' }, 
+                      { value: 'Included - Copper', label: 'Included - Copper' },
+                      { value: 'Included - Aluminium', label: 'Included - Aluminium' },
+                      { value: 'Not Included', label: 'Not Included' }
+                    ]} />
+                  <Select label="AC PVDB to MSB Type" value={installInfo.ac_pvdb_msb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_pvdb_msb_type: e.target.value }))}
+                    options={[
+                      { value: 'No Match', label: 'No Match' }, 
+                      { value: 'Included - Copper', label: 'Included - Copper' },
+                      { value: 'Included - Aluminium', label: 'Included - Aluminium' },
+                      { value: 'Not Included', label: 'Not Included' }
+                    ]} />
+                  <Select label="Cable Tray Type" value={installInfo.cable_tray_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, cable_tray_type: e.target.value }))}
+                    options={[
+                      { value: 'No Match', label: 'No Match' }, 
+                      { value: 'GAL', label: 'GAL' },
+                      { value: 'FRP', label: 'FRP' },
+                      { value: 'None', label: 'None' }
+                    ]} />
+                </div>
+              )}
             </div>
 
             {/* Trenching */}
-            <div className="pt-4 border-t border-slate-800 mt-6">
-              <h3 className="text-sm font-medium text-slate-300 mb-3 uppercase tracking-wider">Trenching</h3>
-              <div className="space-y-3">
-                <Select label="Trenching Type" value={installInfo.trenching_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, trenching_type: e.target.value }))}
-                  options={[
-                    { value: 'No Match', label: 'No Match' },
-                    { value: 'Soft Ground', label: 'Soft Ground' },
-                    { value: 'Hard Ground', label: 'Hard Ground' }
-                  ]} />
-              </div>
+            <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-4 shadow-sm mt-6 mb-6">
+              <button 
+                onClick={() => setIsTrenchingExpanded(!isTrenchingExpanded)}
+                className="w-full flex items-center justify-between mb-2 group"
+              >
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Wrench className="w-4 h-4 text-brand-400" />
+                  Trenching
+                </h3>
+                {isTrenchingExpanded ? <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" /> : <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />}
+              </button>
+              
+              {isTrenchingExpanded && (
+                <div className="space-y-3">
+                  <Select label="Trenching Type" value={installInfo.trenching_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, trenching_type: e.target.value }))}
+                    options={[
+                      { value: 'No Match', label: 'No Match' },
+                      { value: 'Not Included', label: 'Not Included' },
+                      { value: 'Soft Ground', label: 'Soft Ground' },
+                      { value: 'Hard Ground', label: 'Hard Ground' }
+                    ]} />
+                </div>
+              )}
             </div>
           </div>
         </div>
