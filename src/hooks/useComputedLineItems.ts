@@ -18,6 +18,8 @@ export interface MarkupSummary {
   midPoint: number;
   engHours: number;
   pmHours: number;
+  netProfitEst: number;
+  targetNpPercent: number;
 }
 
 export function calculateMarkupSummary(
@@ -50,6 +52,9 @@ export function calculateMarkupSummary(
     optimisers?: string
     battery_pcm?: string
     hv_customer_pcm?: string
+    manual_target_markup?: number | null
+    manual_minimum_markup?: number | null
+    manual_proposed_markup?: number | null
   }
 ): MarkupSummary {
   // If there is no system size and no items on the quote, return zero/empty baseline
@@ -61,6 +66,8 @@ export function calculateMarkupSummary(
       midPoint: 0,
       engHours: 0,
       pmHours: 0,
+      netProfitEst: 0,
+      targetNpPercent: 0,
     }
   }
 
@@ -360,10 +367,18 @@ export function calculateMarkupSummary(
   const denominator = 0.8900217846153846
 
   // 6. Markup Thresholds
-  const targetMarkup = ((resolvedCost + 94.86498769548305 * engHours + 112.68498769548304 * pmHours) / resolvedCost) / denominator
-  const minimumMarkup = ((resolvedCost + 45.25 * engHours + 63.07 * pmHours) / resolvedCost) / denominator
+  const calculatedTargetMarkup = ((resolvedCost + 94.86498769548305 * engHours + 112.68498769548304 * pmHours) / resolvedCost) / denominator
+  const calculatedMinimumMarkup = ((resolvedCost + 45.25 * engHours + 63.07 * pmHours) / resolvedCost) / denominator
+  
+  const targetMarkup = complexityScope?.manual_target_markup ?? calculatedTargetMarkup
+  const minimumMarkup = complexityScope?.manual_minimum_markup ?? calculatedMinimumMarkup
   const midPoint = (targetMarkup + minimumMarkup) / 2
-  const proposedMarkup = targetMarkup // Default to Target Markup
+  const proposedMarkup = complexityScope?.manual_proposed_markup ?? targetMarkup
+
+  // 7. Net Profit and Target NP (%)
+  const netProfitEst = (94.86498769548305 - 45.25) * engHours + (112.68498769548304 - 63.07) * pmHours
+  const netBeforeGST = resolvedCost * proposedMarkup
+  const targetNpPercent = netBeforeGST > 0 ? (netProfitEst / netBeforeGST) : 0
 
   return {
     proposedMarkup,
@@ -372,6 +387,8 @@ export function calculateMarkupSummary(
     midPoint,
     engHours,
     pmHours,
+    netProfitEst,
+    targetNpPercent,
   }
 }
 

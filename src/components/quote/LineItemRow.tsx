@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { MoreVertical, Copy, Trash2, RotateCcw, AlertCircle, CheckCircle, Calculator } from 'lucide-react'
+import { MoreVertical, Copy, Trash2, RotateCcw, AlertCircle, CheckCircle, Calculator, ChevronDown } from 'lucide-react'
 import { clsx } from 'clsx'
 import type { ComputedLineItem, PartialFormulaScope, ModifierType, InclusionStatus } from '../../types/domain.types'
 import FormulaTooltip from './FormulaTooltip'
@@ -276,14 +276,23 @@ export default function LineItemRow({
 
   // All remaining spec fields (excluding the main descriptor and excluded keys)
   const allSpecFields = (() => {
-    if (!item.specData || !item.type_value) return []
+    if (!item.specData) return []
     const specFields = SPEC_FIELD_MAPPINGS[item.type_value] || []
-    return specFields.filter((f) => {
-      if (EXCLUDED_KEYS.has(f.key)) return false
-      if (mainDescriptor && mainDescriptor.key === f.key) return false
-      const val = item.specData?.[f.key]
-      return val !== undefined && val !== null && val !== ''
-    })
+    
+    return Object.keys(item.specData)
+      .filter((key) => {
+        if (EXCLUDED_KEYS.has(key)) return false
+        if (mainDescriptor && mainDescriptor.key === key) return false
+        const val = item.specData?.[key]
+        return val !== undefined && val !== null && val !== ''
+      })
+      .map((key) => {
+        const field = specFields.find(f => f.key === key)
+        return {
+          key,
+          label: field ? field.label : key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        }
+      })
   })()
 
   useEffect(() => {
@@ -303,22 +312,62 @@ export default function LineItemRow({
       )}
     >
       {/* Inclusion status */}
-      <td className="pl-3 pr-2 py-2 w-36 align-top">
-        <select
-          value={item.inclusion_status}
-          onChange={(e) => onStatusChange(e.target.value as InclusionStatus)}
-          disabled={readOnly}
-          className={clsx(
-            'w-full text-xs rounded px-1.5 py-1 border focus:outline-none focus:ring-1 focus:ring-brand-500',
-            'cursor-pointer transition-colors appearance-none',
-            statusStyle(item.inclusion_status),
-            readOnly && 'opacity-60 cursor-default'
-          )}
-        >
-          {INCLUSION_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
+      <td className="pl-3 pr-2 py-2 w-36 align-top relative">
+        <div className="flex flex-col gap-1.5">
+          <select
+            value={item.inclusion_status}
+            onChange={(e) => onStatusChange(e.target.value as InclusionStatus)}
+            disabled={readOnly}
+            className={clsx(
+              'w-full text-xs rounded px-1.5 py-1 border focus:outline-none focus:ring-1 focus:ring-brand-500',
+              'cursor-pointer transition-colors appearance-none shrink-0',
+              statusStyle(item.inclusion_status),
+              readOnly && 'opacity-60 cursor-default'
+            )}
+          >
+            {INCLUSION_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {item.is_custom && (
+              <span className="text-[10px] leading-none text-amber-500 bg-amber-900/30 px-1 py-1 rounded text-center">custom</span>
+            )}
+            {/* Formula toggle button */}
+            {!readOnly && (
+              <button
+                onClick={() => setFormulaOpen((v) => !v)}
+                title={isFormulaOverridden ? 'Formula overridden for this quote — click to edit' : 'Edit formula for this quote'}
+                className={clsx(
+                  'relative flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200',
+                  'border border-slate-700/50 shadow-sm hover:scale-105 hover:shadow-md shrink-0',
+                  formulaOpen
+                    ? 'bg-brand-600 border-brand-500 text-white shadow-brand-900/20'
+                    : isFormulaOverridden
+                      ? 'bg-amber-900/40 border-amber-500/50 text-amber-400 hover:bg-amber-800/60 hover:border-amber-500'
+                      : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 hover:border-slate-600'
+                )}
+              >
+                <span className="font-serif italic text-[11px] leading-none font-bold">fx</span>
+                {isFormulaOverridden && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500"></span>}
+              </button>
+            )}
+            <FormulaTooltip item={item} scope={scope} />
+          </div>
+        </div>
+
+        {/* Inline formula editor popup */}
+        {formulaOpen && !readOnly && (
+          <div className="absolute left-3 top-[calc(100%-4px)] z-50 min-w-[300px]">
+            <InlineFormulaEditor
+              item={item}
+              scope={scope}
+              onSave={onFormulaOverride}
+              onClose={() => setFormulaOpen(false)}
+            />
+          </div>
+        )}
       </td>
 
       {/* Code */}
@@ -334,124 +383,62 @@ export default function LineItemRow({
 
         {/* Spec fields — box descriptor + collapsible extras */}
         {item.specData && mainDescriptor ? (
-          <div className="w-full">
-            {/* Main row: descriptor box + badges + fx button */}
-            <div className="flex items-center gap-1.5 w-full">
-              {/* Main descriptor box — click to show/hide all fields */}
+          <div className="w-full flex items-start gap-1.5">
+            {/* Card wrapper */}
+            <div className="flex-1 bg-slate-900/80 border border-slate-700/60 rounded-lg p-3 min-w-0 transition-colors hover:border-slate-600/80">
+              {/* Clickable Header */}
               <button
                 onClick={() => setDescOpen((v) => !v)}
-                className={clsx(
-                  'flex-1 flex items-center justify-between gap-1.5 px-2.5 py-1 rounded border text-xs text-left transition-colors min-w-0',
-                  descOpen
-                    ? 'bg-brand-900/40 border-brand-600/50 text-brand-200'
-                    : 'bg-slate-800 border-slate-600/50 text-slate-200 hover:border-slate-400 hover:text-white'
-                )}
+                className="w-full flex flex-col text-left focus:outline-none group"
               >
-                <span className="truncate flex items-center gap-2">
-                  <span className={clsx('font-semibold truncate', descOpen ? 'text-brand-300' : 'text-slate-200')}>
-                    {item.name}
+                <span className="text-[10px] font-medium text-slate-500 mb-1">Item Name:</span>
+                <div className="flex items-end justify-between w-full">
+                  <span className="font-semibold text-slate-200 text-xs pr-4 leading-tight">
+                    {mainDescriptor.value !== item.name ? `${item.name} (${mainDescriptor.value})` : item.name}
                   </span>
-                  {mainDescriptor.value !== item.name && (
-                    <span className="truncate flex items-center text-[11px]">
-                      <span className={clsx('mr-1', descOpen ? 'text-brand-400/80' : 'text-slate-500')}>
-                        {mainDescriptor.label}:
-                      </span>
-                      <span className={clsx(descOpen ? 'text-brand-300' : 'text-slate-400')}>
-                        {mainDescriptor.value}
-                      </span>
+                  
+                  {allSpecFields.length > 0 && (
+                    <span className="flex items-center text-[10px] font-semibold text-slate-500 shrink-0 uppercase tracking-widest group-hover:text-slate-400">
+                      {descOpen ? 'Hide' : 'Show'}
+                      <ChevronDown className={clsx("w-3.5 h-3.5 ml-1 transition-transform", descOpen && "rotate-180")} />
                     </span>
                   )}
-                </span>
-                {allSpecFields.length > 0 && (
-                  <span className={clsx('text-[10px] font-normal shrink-0', descOpen ? 'text-brand-400' : 'text-slate-500')}>
-                    {descOpen ? 'Hide' : 'Show'}
-                  </span>
-                )}
+                </div>
               </button>
 
-              {/* Status badges */}
-              {item.is_custom && (
-                <span className="text-xs text-amber-500 bg-amber-900/30 px-1 rounded shrink-0">custom</span>
+              {/* Expanded spec tags */}
+              {descOpen && allSpecFields.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-800/80">
+                  {allSpecFields.map((field) => {
+                    const val = item.specData?.[field.key]
+                    if (val === undefined || val === null || val === '') return null
+                    const displayVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val)
+                    // Match the highlight in the screenshot (e.g. green or white)
+                    const isNameOrCode = field.key.includes('name') || field.key.includes('code')
+                    
+                    return (
+                      <div key={field.key} className="flex items-center text-[10.5px] bg-slate-800/80 rounded px-1.5 py-0.5 border border-slate-700/50">
+                        <span className="text-slate-400 mr-1.5">{field.label}:</span>
+                        <span className={clsx(
+                          "font-medium", 
+                          isNameOrCode ? "text-brand-400" : "text-slate-200"
+                        )}>
+                          {displayVal}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
               )}
-
-              {/* Formula toggle button */}
-              {!readOnly && (
-                <button
-                  onClick={() => setFormulaOpen((v) => !v)}
-                  title={isFormulaOverridden ? 'Formula overridden for this quote — click to edit' : 'Edit formula for this quote'}
-                  className={clsx(
-                    'relative flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200',
-                    'border border-slate-700/50 shadow-sm hover:scale-105 hover:shadow-md',
-                    formulaOpen
-                      ? 'bg-brand-600 border-brand-500 text-white shadow-brand-900/20'
-                      : isFormulaOverridden
-                        ? 'bg-amber-900/40 border-amber-500/50 text-amber-400 hover:bg-amber-800/60 hover:border-amber-500'
-                        : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 hover:border-slate-600'
-                  )}
-                >
-                  <span className="font-serif italic text-[11px] leading-none font-bold">fx</span>
-                  {isFormulaOverridden && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500"></span>}
-                </button>
-              )}
-
-              <FormulaTooltip item={item} scope={scope} />
             </div>
-
-            {/* Expanded spec tags */}
-            {descOpen && allSpecFields.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1.5">
-                {allSpecFields.map((field) => {
-                  const val = item.specData?.[field.key]
-                  if (val === undefined || val === null || val === '') return null
-                  const displayVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val)
-                  return (
-                    <span key={field.key} className="text-[11px] bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-700/40 text-slate-400">
-                      <span className="text-slate-500 font-medium">{field.label}:</span> {displayVal}
-                    </span>
-                  )
-                })}
-              </div>
-            )}
           </div>
         ) : (
-          /* Fallback for items with no specData — show name + badges + fx */
+          /* Fallback for items with no specData — show name */
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-sm text-slate-200">
               {item.name}
             </span>
-            {item.is_custom && (
-              <span className="text-xs text-amber-500 bg-amber-900/30 px-1 rounded shrink-0">custom</span>
-            )}
-            {!readOnly && (
-              <button
-                onClick={() => setFormulaOpen((v) => !v)}
-                title={isFormulaOverridden ? 'Formula overridden for this quote — click to edit' : 'Edit formula for this quote'}
-                className={clsx(
-                  'relative flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200',
-                  'border border-slate-700/50 shadow-sm hover:scale-105 hover:shadow-md',
-                  formulaOpen
-                    ? 'bg-brand-600 border-brand-500 text-white shadow-brand-900/20'
-                    : isFormulaOverridden
-                      ? 'bg-amber-900/40 border-amber-500/50 text-amber-400 hover:bg-amber-800/60 hover:border-amber-500'
-                      : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 hover:border-slate-600'
-                )}
-              >
-                <span className="font-serif italic text-[11px] leading-none font-bold">fx</span>
-                {isFormulaOverridden && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500"></span>}
-              </button>
-            )}
-            <FormulaTooltip item={item} scope={scope} />
           </div>
-        )}
-
-        {/* Inline formula editor */}
-        {formulaOpen && !readOnly && (
-          <InlineFormulaEditor
-            item={item}
-            scope={scope}
-            onSave={onFormulaOverride}
-            onClose={() => setFormulaOpen(false)}
-          />
         )}
 
         {/* Option group selectors */}

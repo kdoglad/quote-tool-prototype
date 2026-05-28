@@ -88,6 +88,9 @@ export default function QuoteEditorPage() {
     safety: 'Standard',
     battery_pcm: 'None',
     hv_customer_pcm: 'No',
+    manual_target_markup: null,
+    manual_minimum_markup: null,
+    manual_proposed_markup: null,
   })
 
   const [isPcmExpanded, setIsPcmExpanded] = useState(false)
@@ -1025,28 +1028,88 @@ export default function QuoteEditorPage() {
               Markup Analysis
             </h3>
             <div className="space-y-1">
-              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
-                <span className="text-xs text-slate-400">Proposed Markup</span>
-                <span className="text-xs text-emerald-400 font-mono font-bold">
-                  {hasProject && totals.proposedMarkup > 0 ? `${((totals.proposedMarkup - 1) * 100).toFixed(1)}%` : '—'}
-                </span>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60 group">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={installInfo.manual_proposed_markup != null}
+                    onChange={(e) => setInstallInfo((prev: any) => ({ ...prev, manual_proposed_markup: e.target.checked ? totals.proposedMarkup : null }))}
+                    className="w-3 h-3 rounded border-slate-600 bg-slate-800 text-brand-500 focus:ring-brand-500"
+                  />
+                  <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">Proposed Markup</span>
+                </label>
+                {installInfo.manual_proposed_markup != null ? (
+                  <input
+                    type="number"
+                    step="0.001"
+                    value={installInfo.manual_proposed_markup || ''}
+                    onChange={(e) => setInstallInfo((prev: any) => ({ ...prev, manual_proposed_markup: parseFloat(e.target.value) || 0 }))}
+                    className="w-20 bg-slate-800 text-xs font-mono font-bold text-emerald-400 text-right border border-slate-700 rounded px-1 py-0.5 focus:outline-none focus:border-brand-500"
+                  />
+                ) : (
+                  <span className="text-xs text-emerald-400 font-mono font-bold">
+                    {hasProject && totals.proposedMarkup > 0 ? totals.proposedMarkup.toFixed(3) : '—'}
+                  </span>
+                )}
               </div>
-              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
-                <span className="text-xs text-slate-400">Target Markup</span>
-                <span className="text-xs text-brand-400 font-mono font-bold">
-                  {hasProject && totals.targetMarkup > 0 ? `${((totals.targetMarkup - 1) * 100).toFixed(1)}%` : '—'}
-                </span>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60 group">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={installInfo.manual_target_markup != null}
+                    onChange={(e) => setInstallInfo((prev: any) => ({ ...prev, manual_target_markup: e.target.checked ? totals.targetMarkup : null }))}
+                    className="w-3 h-3 rounded border-slate-600 bg-slate-800 text-brand-500 focus:ring-brand-500"
+                  />
+                  <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">Target Markup</span>
+                </label>
+                {installInfo.manual_target_markup != null ? (
+                  <input
+                    type="number"
+                    step="0.001"
+                    value={installInfo.manual_target_markup || ''}
+                    onChange={(e) => setInstallInfo((prev: any) => ({ ...prev, manual_target_markup: parseFloat(e.target.value) || 0 }))}
+                    className="w-20 bg-slate-800 text-xs font-mono font-bold text-brand-400 text-right border border-slate-700 rounded px-1 py-0.5 focus:outline-none focus:border-brand-500"
+                  />
+                ) : (
+                  <span className="text-xs text-brand-400 font-mono font-bold">
+                    {hasProject && totals.targetMarkup > 0 ? totals.targetMarkup.toFixed(3) : '—'}
+                  </span>
+                )}
               </div>
-              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
-                <span className="text-xs text-slate-400">Minimum Markup</span>
-                <span className="text-xs text-amber-400 font-mono font-bold">
-                  {hasProject && totals.minimumMarkup > 0 ? `${((totals.minimumMarkup - 1) * 100).toFixed(1)}%` : '—'}
-                </span>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60 group">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={installInfo.manual_minimum_markup != null}
+                    onChange={(e) => setInstallInfo((prev: any) => ({ ...prev, manual_minimum_markup: e.target.checked ? totals.minimumMarkup : null }))}
+                    className="w-3 h-3 rounded border-slate-600 bg-slate-800 text-brand-500 focus:ring-brand-500"
+                  />
+                  <span className="text-xs text-slate-400 group-hover:text-slate-300 transition-colors">Minimum Markup</span>
+                </label>
+                {installInfo.manual_minimum_markup != null ? (
+                  <input
+                    type="number"
+                    step="0.001"
+                    value={installInfo.manual_minimum_markup || ''}
+                    onChange={(e) => setInstallInfo((prev: any) => ({ ...prev, manual_minimum_markup: parseFloat(e.target.value) || 0 }))}
+                    className="w-20 bg-slate-800 text-xs font-mono font-bold text-amber-400 text-right border border-slate-700 rounded px-1 py-0.5 focus:outline-none focus:border-brand-500"
+                  />
+                ) : (
+                  <span className="text-xs text-amber-400 font-mono font-bold">
+                    {hasProject && totals.minimumMarkup > 0 ? totals.minimumMarkup.toFixed(3) : '—'}
+                  </span>
+                )}
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
                 <span className="text-xs text-slate-400">Mid Point</span>
                 <span className="text-xs text-slate-300 font-mono">
-                  {hasProject && totals.midPoint > 0 ? `${((totals.midPoint - 1) * 100).toFixed(1)}%` : '—'}
+                  {hasProject && totals.midPoint > 0 ? totals.midPoint.toFixed(3) : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-xs text-slate-400">Target NP (%)</span>
+                <span className="text-xs text-slate-300 font-mono font-bold">
+                  {hasProject && totals.targetNpPercent > 0 ? `${(totals.targetNpPercent * 100).toFixed(2)}%` : '—'}
                 </span>
               </div>
               <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">

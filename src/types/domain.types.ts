@@ -405,6 +405,10 @@ export interface SiteDetailsFormData {
   cable_tray_type?: string
   trenching_type?: string
   optimisers?: string
+  // Manual Markups
+  manual_target_markup?: number | null
+  manual_minimum_markup?: number | null
+  manual_proposed_markup?: number | null
 }
 
 // ============================================================
