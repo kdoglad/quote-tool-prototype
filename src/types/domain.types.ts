@@ -12,8 +12,6 @@ export type ModifierType = 'none' | 'flat' | 'percent'
 export type InclusionStatus =
   | 'included'          // Counted in total, shown in inclusions list
   | 'not_required'      // Not counted, shown in exclusions list
-  | 'provisional_sum'   // Counted in total, marked "PS" — price to be confirmed
-  | 'appears_adequate'  // Not counted, excluded with note that existing equip is sufficient
 
 export type ItemCategory =
   | 'Prelim'

@@ -9,16 +9,12 @@ import { DEFAULT_SCOPE_VALUES } from '../../lib/constants'
 const INCLUSION_OPTIONS: { value: InclusionStatus; label: string }[] = [
   { value: 'included', label: 'Included' },
   { value: 'not_required', label: 'Not Required' },
-  { value: 'provisional_sum', label: 'Provisional Sum' },
-  { value: 'appears_adequate', label: 'Appears Adequate' },
 ]
 
 function statusStyle(status: InclusionStatus) {
   switch (status) {
     case 'included': return 'bg-emerald-950 border-emerald-800/60 text-emerald-300'
     case 'not_required': return 'bg-slate-900 border-slate-700 text-slate-500'
-    case 'provisional_sum': return 'bg-amber-950 border-amber-800/60 text-amber-300'
-    case 'appears_adequate': return 'bg-blue-950 border-blue-800/60 text-blue-300'
   }
 }
 
@@ -376,12 +372,6 @@ export default function LineItemRow({
               </button>
 
               {/* Status badges */}
-              {item.inclusion_status === 'provisional_sum' && (
-                <span className="text-xs font-semibold text-amber-400 bg-amber-900/40 px-1.5 py-0.5 rounded shrink-0">PS</span>
-              )}
-              {item.inclusion_status === 'appears_adequate' && (
-                <span className="text-xs text-blue-400 bg-blue-900/30 px-1 rounded shrink-0">appears adequate</span>
-              )}
               {item.is_custom && (
                 <span className="text-xs text-amber-500 bg-amber-900/30 px-1 rounded shrink-0">custom</span>
               )}
@@ -428,18 +418,9 @@ export default function LineItemRow({
         ) : (
           /* Fallback for items with no specData — show name + badges + fx */
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className={clsx(
-              'text-sm text-slate-200',
-              item.inclusion_status === 'appears_adequate' && 'italic text-slate-400',
-            )}>
+            <span className="text-sm text-slate-200">
               {item.name}
             </span>
-            {item.inclusion_status === 'provisional_sum' && (
-              <span className="text-xs font-semibold text-amber-400 bg-amber-900/40 px-1.5 py-0.5 rounded shrink-0">PS</span>
-            )}
-            {item.inclusion_status === 'appears_adequate' && (
-              <span className="text-xs text-blue-400 bg-blue-900/30 px-1 rounded shrink-0">appears adequate</span>
-            )}
             {item.is_custom && (
               <span className="text-xs text-amber-500 bg-amber-900/30 px-1 rounded shrink-0">custom</span>
             )}
@@ -642,4 +623,3 @@ export default function LineItemRow({
     </tr>
   )
 }
-
