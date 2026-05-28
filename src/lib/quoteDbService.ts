@@ -345,7 +345,7 @@ async function saveQuote(
             has_ev: inputs.system.hasEv,
             existing_solar_kw: inputs.system.existingPvSizeKw || 0,
             valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days
-            internal_notes: `Markup: ${(inputs.pricing.proposedMarkup * 100).toFixed(2)}%`,
+            internal_notes: result.internalNotes || `Markup: ${(inputs.pricing.proposedMarkup * 100).toFixed(2)}%`,
             created_by: userId,
         };
 
@@ -823,6 +823,7 @@ export async function updateQuoteData(
                 system_kw: inputs.system.totalSystemSizeKw,
                 has_bess: inputs.system.hasBess,
                 has_ev: inputs.system.hasEv,
+                internal_notes: result.internalNotes,
                 updated_at: new Date().toISOString(),
             })
             .eq('id', quoteId);

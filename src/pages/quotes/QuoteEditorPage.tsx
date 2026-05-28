@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useEffect, useMemo, Fragment } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Save, ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react'
 import { useQuoteEditorStore } from '../../stores/quoteEditorStore'
@@ -14,11 +14,14 @@ import type { InclusionStatus, QuoteLineItemState, ItemCategory, ComputedLineIte
 import { type QuoteInputs, type CategorySubtotal, type QuoteResult, type LineItem } from '../../lib/quoteEngine'
 import { saveQuoteData, updateQuoteData, getQuoteById } from '../../lib/quoteDbService'
 import { AUSTRALIAN_STATES, STC_ZONE_FACTORS } from '../../lib/constants'
+import { extractNMIPrefix, resolveDNSP, inferStateFromDNSP, buildDNSPScope } from '../../lib/dnspResolver'
 import { usePriceItemOptions } from '../../hooks/usePriceItemOptions'
 import { useComputedLineItems, useQuoteTotals } from '../../hooks/useComputedLineItems'
 import { useDNSPRules } from '../../hooks/useDNSPRules'
-import { extractNMIPrefix, resolveDNSP, buildDNSPScope, inferStateFromDNSP } from '../../lib/dnspResolver'
-import { computeLineItemTotal } from '../../lib/formulaEngine'
+import { evaluateFormula, type PartialFormulaScope } from '../../lib/formulaEngine'
+import { InlineFormulaEditor } from '../../components/quote/InlineFormulaEditor'
+import LineItemRow from '../../components/quote/LineItemRow'
+import QuoteSummary from '../../components/quote/QuoteSummary'
 
 const EMPTY_ARRAY: any[] = []
 
@@ -34,272 +37,6 @@ const CATEGORY_STRUCTURE = [
   { id: 'Monitoring', label: 'H. Monitoring & Warranty' },
   { id: 'EV', label: 'I. EV Charging' },
 ]
-
-const SPEC_FIELD_MAPPINGS: Record<string, { label: string; key: string }[]> = {
-  ac_breaker: [
-    { label: 'Rating', key: 'rating_a' },
-    { label: 'Name', key: 'name' },
-    { label: 'Breaker Type', key: 'breaker_type' }
-  ],
-  ac_cabling: [
-    { label: 'Size', key: 'size_mm2' },
-    { label: 'Inclusion', key: 'inclusion' },
-    { label: 'Conductor', key: 'conductor_material' }
-  ],
-  ac_combiner: [
-    { label: 'Combiner Name', key: 'ac_combiner_name' },
-    { label: 'Notes', key: 'notes' }
-  ],
-  additional_racking: [
-    { label: 'Item Name', key: 'item_name' },
-    { label: 'Unit', key: 'unit' }
-  ],
-  batteries: [
-    { label: 'Brand', key: 'brand' },
-    { label: 'Item Name', key: 'item_name' },
-    { label: 'Nominal kWh', key: 'nominal_kwh' }
-  ],
-  battery_inverter: [
-    { label: 'Brand', key: 'brand' },
-    { label: 'kVA', key: 'kva' },
-    { label: 'Item Name', key: 'item_name' }
-  ],
-  bessdb: [
-    { label: 'BESSDB Type', key: 'bessdb_type' }
-  ],
-  cabling_addons: [
-    { label: 'Item Name', key: 'item_name' },
-    { label: 'Addon Type', key: 'addon_type' }
-  ],
-  dc_cabling: [
-    { label: 'Size', key: 'size_mm2' },
-    { label: 'Inclusion', key: 'inclusion' },
-    { label: 'Conductor', key: 'conductor_material' }
-  ],
-  dc_combiner: [
-    { label: 'Combiner Name', key: 'dc_combiner_name' },
-    { label: 'Notes', key: 'notes' }
-  ],
-  dc_twin_cabling: [
-    { label: 'Size', key: 'size_twin_dc_cable_mm' },
-    { label: 'Notes', key: 'notes' }
-  ],
-  grid_protection: [
-    { label: 'DNSP', key: 'dnsp' },
-    { label: 'Req. Over', key: 'required_over_kva' },
-    { label: 'Export Limit Enforced', key: 'is_export_limit_enforced' }
-  ],
-  grid_connection: [
-    { label: 'DNSP', key: 'dnsp' },
-    { label: 'Low Size', key: 'low_size_kva' },
-    { label: 'High Size', key: 'high_side_kva' }
-  ],
-  harm_filtering: [
-    { label: 'Item Type', key: 'item_type' }
-  ],
-  install: [
-    { label: 'Item Type', key: 'item_type' },
-    { label: 'Install Item', key: 'install_item' },
-    { label: 'Unit', key: 'unit' }
-  ],
-  inverters: [
-    { label: 'Brand', key: 'brand' },
-    { label: 'Model', key: 'model' },
-    { label: 'Warranty Years', key: 'warranty_years' }
-  ],
-  inverter_station: [
-    { label: 'Station', key: 'inverter_station' }
-  ],
-  lifting: [
-    { label: 'Name', key: 'name' },
-    { label: 'Lifting Type', key: 'lifting_type' },
-    { label: 'Time', key: 'time' }
-  ],
-  monitoring_addons: [
-    { label: 'Item Type', key: 'item_type' },
-    { label: 'Item Name', key: 'item_name' },
-    { label: 'Unit', key: 'unit' }
-  ],
-  monitoring_warranty: [
-    { label: 'Item Type', key: 'item_type' },
-    { label: 'Item Name', key: 'item_name' },
-    { label: 'Unit', key: 'unit' }
-  ],
-  netnada: [
-    { label: 'Plan Type', key: 'plan_type' },
-    { label: 'Payment Plan', key: 'payment_plan' }
-  ],
-  netnada_addons: [
-    { label: 'Item Name', key: 'item_name' },
-    { label: 'Payment Plan', key: 'payment_plan' }
-  ],
-  optimisers: [
-    { label: 'Size VA', key: 'size_va' },
-    { label: 'Optimiser Name', key: 'optimiser_name' }
-  ],
-  panels: [
-    { label: 'Brand', key: 'brand' },
-    { label: 'Item Type', key: 'item_type' },
-    { label: 'Item Name', key: 'item_name' }
-  ],
-  pfc: [
-    { label: 'PFC Type', key: 'pfc_type' }
-  ],
-  prelim_general: [
-    { label: 'Item Type', key: 'item_type' },
-    { label: 'Item Name', key: 'item_name' }
-  ],
-  pvdb: [
-    { label: 'PVDB Type', key: 'pvdb_type' }
-  ],
-  racking: [
-    { label: 'Racking Type', key: 'racking_type' }
-  ],
-  safety: [
-    { label: 'Item Type', key: 'item_type' },
-    { label: 'Item Name', key: 'item_name' },
-    { label: 'Unit', key: 'unit' }
-  ],
-  switch_gear: [
-    { label: 'Item Type', key: 'item_type' },
-    { label: 'Item Name', key: 'item_name' }
-  ],
-  travel_accoms_freight: [
-    { label: 'Distance', key: 'distance_frm_city_center' },
-    { label: 'Rates', key: 'travel_rates' }
-  ],
-  witness_injection: [
-    { label: 'DNSP', key: 'dnsp' },
-    { label: 'Req. Over', key: 'required_over_kva' }
-  ]
-};
-
-interface QuoteItemRowProps {
-  computedItem: ComputedLineItem
-  scope: any
-  handleItemStatusChange: (instanceId: string, status: InclusionStatus) => void
-  handleItemQtyChange: (instanceId: string, qty: number) => void
-}
-
-function QuoteItemRow({
-  computedItem,
-  scope,
-  handleItemStatusChange,
-  handleItemQtyChange
-}: QuoteItemRowProps) {
-  const [qtyStr, setQtyStr] = useState(String(computedItem.qty))
-  const isIncluded = computedItem.is_included
-
-  useEffect(() => {
-    setQtyStr(String(computedItem.qty))
-  }, [computedItem.qty])
-
-  const unitRate = useMemo(() => {
-    if (isIncluded && computedItem.qty > 0) {
-      return computedItem.computed_total / computedItem.qty
-    }
-    const mockItem = { formula: computedItem.formula, base_price: computedItem.base_unit_price }
-    try {
-      return computeLineItemTotal(mockItem, 1, scope, { type: 'none', value: 0 })
-    } catch {
-      return computedItem.base_unit_price
-    }
-  }, [isIncluded, computedItem.qty, computedItem.computed_total, computedItem.formula, computedItem.base_unit_price, scope])
-
-  const total = computedItem.computed_total
-
-  const nameKeys = ['item_name', 'name', 'ac_combiner_name', 'dc_combiner_name', 'optimiser_name', 'install_item'];
-  const hasNameSpec = !!(computedItem.specData && nameKeys.some(key => {
-    const val = computedItem.specData?.[key];
-    return val !== undefined && val !== null && val !== '';
-  }));
-
-  const isNameRedundant = computedItem.name.trim().toUpperCase() === computedItem.code.trim().toUpperCase();
-  const shouldHideMainDescription = isNameRedundant || hasNameSpec;
-
-  return (
-    <div className="grid grid-cols-11 gap-2 px-4 py-2.5 hover:bg-slate-850 transition-colors text-sm">
-      {/* Status */}
-      <div className="col-span-2">
-        <select
-          value={computedItem.inclusion_status}
-          onChange={(e) => handleItemStatusChange(computedItem.instance_id, e.target.value as InclusionStatus)}
-          className={`w-full bg-slate-800 border rounded text-[13px] py-1 px-2.5 focus:outline-none focus:ring-1 ${isIncluded
-            ? 'border-emerald-600 text-emerald-400 focus:ring-emerald-500 font-medium'
-            : 'border-slate-700 text-slate-400 focus:ring-brand-500'
-            }`}
-        >
-          <option value="not_required">Not Required</option>
-          <option value="included">Included</option>
-        </select>
-      </div>
-
-      {/* Code */}
-      <div className="col-span-1 text-slate-400 text-[13px] font-mono truncate pt-1">{computedItem.code}</div>
-
-      {/* Description */}
-      <div className="col-span-3">
-        {!shouldHideMainDescription && (
-          <div className="text-white text-[13px] font-medium break-words leading-relaxed">{computedItem.name}</div>
-        )}
-        
-        {/* Spec fields render */}
-        {computedItem.specData && SPEC_FIELD_MAPPINGS[computedItem.type_value || ''] && (
-          <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {SPEC_FIELD_MAPPINGS[computedItem.type_value || ''].map((field) => {
-              const val = computedItem.specData?.[field.key];
-              if (val === undefined || val === null || val === '') return null;
-              const displayVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val);
-              return (
-                <span key={field.key} className="bg-slate-800 border border-slate-500 px-2.5 py-0.5 rounded text-[12px] text-white whitespace-nowrap inline-flex items-center shadow-sm">
-                  <span className="text-slate-400 font-semibold mr-1">{field.label}:</span> {displayVal}
-                </span>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Unit */}
-      <div className="col-span-1 text-slate-300 text-[13px] pt-1">{computedItem.unit}</div>
-
-      {/* Qty */}
-      <div className="col-span-1">
-        <input
-          type="number"
-          min="0"
-          value={qtyStr}
-          onChange={(e) => {
-            const val = e.target.value;
-            setQtyStr(val);
-            const parsed = parseInt(val, 10);
-            if (!isNaN(parsed)) {
-              handleItemQtyChange(computedItem.instance_id, parsed);
-            } else {
-              handleItemQtyChange(computedItem.instance_id, 0);
-            }
-          }}
-          onBlur={() => {
-            if (qtyStr.trim() === '') {
-              setQtyStr(String(computedItem.qty));
-            }
-          }}
-          className="w-full bg-slate-800 border border-slate-700 rounded text-[13px] text-white py-1 px-2 focus:outline-none focus:ring-1 focus:ring-brand-500 font-mono text-right"
-        />
-      </div>
-
-      {/* Rate */}
-      <div className="col-span-2 text-slate-200 text-[13px] font-mono pt-1">
-        ${unitRate.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-      </div>
-
-      {/* Total */}
-      <div className={`col-span-1 text-right font-semibold text-[13px] pt-1 ${isIncluded ? 'text-emerald-400' : 'text-slate-500'}`}>
-        ${total.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-      </div>
-    </div>
-  )
-}
 
 export default function QuoteEditorPage() {
   const { id } = useParams<{ id: string }>()
@@ -324,12 +61,29 @@ export default function QuoteEditorPage() {
     is_off_grid: false, billing_address: '', suburb: '', postcode: '', state: '',
   })
 
-  const [installInfo, setInstallInfo] = useState({
+  const [installInfo, setInstallInfo] = useState<Partial<any>>({
     total_system_size_kw: 0, funding_model: 'Capex', install_address: '', suburb: '',
     postcode: '', state: '', stcs_on_first_100kw: true,
     expected_commissioning_year: new Date().getFullYear(),
     expected_commissioning_month: 'January', existing_pv_kwp: 0, existing_pv_kva: 0,
     hv_customer: false, site_inspection_confirmed: false,
+    dc_cabling_type: 'No Match', ac_inverter_pvdb_type: 'No Match', ac_pvdb_msb_type: 'No Match',
+    cable_tray_type: 'No Match', trenching_type: 'No Match', optimisers: 'No Match',
+    client_cooperativeness: 'Very Co-operative',
+    switchboard_complexity: 'Not Involved',
+    site_complexity: 'None',
+    site_complexity2: 'None',
+    racking: 'Base Tin Installation',
+    racking2: 'Flush Mounted',
+    system_complexity: 'Standard',
+    builders: 'Not Involved',
+    consultants: 'Not Involved',
+    architects: 'Not Involved',
+    ppa_funders: 'Not Involved',
+    stc_lgc_split: 'No',
+    transformer: 'Not Required',
+    rollout: 'No (1-2 sites)',
+    safety: 'Standard',
   })
 
   const [projectName, setProjectName] = useState('')
@@ -348,7 +102,49 @@ export default function QuoteEditorPage() {
 
   // Dynamic formula-evaluated items & totals
   const computedItems = useComputedLineItems(priceItems, lineItems, scope, optionData)
-  const totals = useQuoteTotals(computedItems)
+
+  const complexityScope = useMemo(() => ({
+    ...scope,
+    client_cooperativeness: installInfo.client_cooperativeness,
+    switchboard_complexity: installInfo.switchboard_complexity,
+    site_complexity: installInfo.site_complexity,
+    site_complexity2: installInfo.site_complexity2,
+    racking: installInfo.racking,
+    racking2: installInfo.racking2,
+    system_complexity: installInfo.system_complexity,
+    builders: installInfo.builders,
+    consultants: installInfo.consultants,
+    architects: installInfo.architects,
+    ppa_funders: installInfo.ppa_funders,
+    stc_lgc_split: installInfo.stc_lgc_split,
+    transformer: installInfo.transformer,
+    rollout: installInfo.rollout,
+    safety: installInfo.safety,
+    hv_customer: installInfo.hv_customer,
+  }), [scope, installInfo])
+
+  const totals = useQuoteTotals(computedItems, installInfo.total_system_size_kw, complexityScope)
+
+  const hasProject = installInfo.total_system_size_kw > 0 || totals.costSubtotal > 0
+
+  const [activeSummaryTab, setActiveSummaryTab] = useState<'quote' | 'markup' | 'forecast'>('quote')
+
+  // Reactive Price Increase Forecast calculations
+  const forecastSummary = useMemo(() => {
+    const today = new Date()
+    const monthMap: Record<string, number> = {
+      'January': 0, 'February': 1, 'March': 2, 'April': 3, 'May': 4, 'June': 5,
+      'July': 6, 'August': 7, 'September': 8, 'October': 9, 'November': 10, 'December': 11
+    }
+    const monthIndex = monthMap[installInfo.expected_commissioning_month] ?? 8
+    const expectedStartDate = new Date(installInfo.expected_commissioning_year, monthIndex, 30)
+    const decisionTimeMs = expectedStartDate.getTime() - today.getTime()
+    const decisionTimeDays = decisionTimeMs / (1000 * 60 * 60 * 24)
+    const dailyIncreaseRate = 0.00056
+    const percentPriceIncrease = decisionTimeDays * dailyIncreaseRate
+    const systemValueAtStartDate = totals.netBeforeGST * (1 + percentPriceIncrease)
+    return { decisionTimeDays, percentPriceIncrease, systemValueAtStartDate }
+  }, [installInfo.expected_commissioning_year, installInfo.expected_commissioning_month, totals.netBeforeGST])
 
   // Reset mapping flag when quote ID changes
   useEffect(() => {
@@ -661,7 +457,6 @@ export default function QuoteEditorPage() {
         },
       }
 
-      // Group and construct subtotals for the DB matching what's evaluated by our dynamic formulas
       const subtotals: CategorySubtotal[] = []
       const categories = Array.from(new Set(computedItems.map(i => i.category)))
 
@@ -868,6 +663,82 @@ export default function QuoteEditorPage() {
                 </div>
               </div>
             </div>
+
+            {/* Project Complexity Modifiers */}
+            <div className="pt-4 border-t border-slate-800 mt-6">
+              <h3 className="text-sm font-medium text-slate-300 mb-3 uppercase tracking-wider">Project Complexity Modifiers</h3>
+              <div className="space-y-3">
+                <Select label="Client Co-operativeness" value={installInfo.client_cooperativeness || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, client_cooperativeness: e.target.value }))}
+                  options={['Very Co-operative', 'Average', 'Difficult', 'Very Difficult', 'CUB', 'No Match'].map(v => ({ value: v, label: v }))} />
+                <Select label="Racking Type" value={installInfo.racking || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking: e.target.value }))}
+                  options={['Base Tin Installation', 'Base Tile Installation', 'Ground Mounted (Fixed Tilt)', 'Ground Mounted (Single Axis)', 'Concrete Roof Mounted (not including waterproofing)', 'Ballasted System', 'Floating (ex. Anchors and Extras)', 'Carpark', 'No Match'].map(v => ({ value: v, label: v }))} />
+                <Select label="Racking 2 (Additional)" value={installInfo.racking2 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking2: e.target.value }))}
+                  options={['Flush Mounted', 'Frameless', 'Klip Lock Addition', 'Tilt Legs Addition', 'Wind Zone C/D', 'Klip Lock + Tilt Legs Addition', 'Klip Lock Addition + Wind Zone C/D', 'Tilt Legs + Wind Zone C/D Addition', 'Klip Lock + Tilt Legs Addition +  Wind Zone C/D Addition', 'No Match'].map(v => ({ value: v, label: v }))} />
+                <Select label="System Complexity" value={installInfo.system_complexity || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, system_complexity: e.target.value }))}
+                  options={['Standard', 'Complex', 'Multi Roof', 'Large Scale Roof', 'Ground mounted mechanical + electrical', 'No Match'].map(v => ({ value: v, label: v }))} />
+                <Select label="Switchboard" value={installInfo.switchboard_complexity || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, switchboard_complexity: e.target.value }))}
+                  options={['Appears to be Adequate', 'May Require Upgrade (Excluded from quote)', 'Requires extension/New cabinet', 'Not Involved', 'Involved', 'Heavily or Continuously Involved', 'No Match'].map(v => ({ value: v, label: v }))} />
+                <Select label="Site Complexity 1" value={installInfo.site_complexity || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, site_complexity: e.target.value }))}
+                  options={['None', 'DA', 'Mine Site', 'Tricky Cable Run', 'AFC Not In Scope', 'Building Certification', 'Carport (SCP)', 'Carport (Other)', 'Building Height >20m', 'GSES', 'Generator on site'].map(v => ({ value: v, label: v }))} />
+                <Select label="Site Complexity 2" value={installInfo.site_complexity2 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, site_complexity2: e.target.value }))}
+                  options={['None', 'DA', 'Mine Site', 'Tricky Cable Run', 'AFC Not In Scope', 'Building Certification', 'Carport (SCP)', 'Carport (Other)', 'Building Height >20m', 'GSES', 'Generator on site'].map(v => ({ value: v, label: v }))} />
+                <Select label="Builders" value={installInfo.builders || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, builders: e.target.value }))}
+                  options={['Not Involved', 'Involved', 'Heavily or Continuously Involved'].map(v => ({ value: v, label: v }))} />
+                <Select label="Consultants" value={installInfo.consultants || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, consultants: e.target.value }))}
+                  options={['Not Involved', 'Involved'].map(v => ({ value: v, label: v }))} />
+                <Select label="Architects" value={installInfo.architects || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, architects: e.target.value }))}
+                  options={['Not Involved', 'Involved'].map(v => ({ value: v, label: v }))} />
+                <Select label="PPA Funders" value={installInfo.ppa_funders || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ppa_funders: e.target.value }))}
+                  options={['Not Involved', 'Clearsky', 'Solarbay/Green Peak'].map(v => ({ value: v, label: v }))} />
+                <Select label="STC/LGC Split" value={installInfo.stc_lgc_split || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, stc_lgc_split: e.target.value }))}
+                  options={['No', 'Yes'].map(v => ({ value: v, label: v }))} />
+                <Select label="Transformer" value={installInfo.transformer || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, transformer: e.target.value }))}
+                  options={['Not Required', 'Required'].map(v => ({ value: v, label: v }))} />
+                <Select label="Rollout" value={installInfo.rollout || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, rollout: e.target.value }))}
+                  options={['No (1-2 sites)', 'Yes (3-5 sites)', 'Yes (5-20 sites)', 'Yes (20+ sites)'].map(v => ({ value: v, label: v }))} />
+                <Select label="Safety" value={installInfo.safety || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, safety: e.target.value }))}
+                  options={['Standard', 'Rigorous', 'Very Rigorous', 'No Match'].map(v => ({ value: v, label: v }))} />
+                <Select label="Optimisers" value={installInfo.optimisers || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, optimisers: e.target.value }))}
+                  options={[
+                    { value: 'No Match', label: 'No Match' },
+                    { value: 'SolarEdge', label: 'SolarEdge' },
+                    { value: 'Tigo', label: 'Tigo' },
+                    { value: 'Enphase', label: 'Enphase' }
+                  ]} />
+              </div>
+            </div>
+
+            {/* Cabling Details */}
+            <div className="pt-4 border-t border-slate-800 mt-6">
+              <h3 className="text-sm font-medium text-slate-300 mb-3 uppercase tracking-wider">Cabling Details</h3>
+              <div className="space-y-3">
+                <Select label="DC Cabling Type" value={installInfo.dc_cabling_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cabling_type: e.target.value }))}
+                  options={[
+                    { value: 'No Match', label: 'No Match' },
+                    { value: '4mm2', label: '4mm2' },
+                    { value: '6mm2', label: '6mm2' }
+                  ]} />
+                <Select label="AC Inverter to PVDB Type" value={installInfo.ac_inverter_pvdb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_inverter_pvdb_type: e.target.value }))}
+                  options={[{ value: 'No Match', label: 'No Match' }, { value: 'Standard', label: 'Standard' }]} />
+                <Select label="AC PVDB to MSB Type" value={installInfo.ac_pvdb_msb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_pvdb_msb_type: e.target.value }))}
+                  options={[{ value: 'No Match', label: 'No Match' }, { value: 'Standard', label: 'Standard' }]} />
+                <Select label="Cable Tray Type" value={installInfo.cable_tray_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, cable_tray_type: e.target.value }))}
+                  options={[{ value: 'No Match', label: 'No Match' }, { value: 'Standard', label: 'Standard' }]} />
+              </div>
+            </div>
+
+            {/* Trenching */}
+            <div className="pt-4 border-t border-slate-800 mt-6">
+              <h3 className="text-sm font-medium text-slate-300 mb-3 uppercase tracking-wider">Trenching</h3>
+              <div className="space-y-3">
+                <Select label="Trenching Type" value={installInfo.trenching_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, trenching_type: e.target.value }))}
+                  options={[
+                    { value: 'No Match', label: 'No Match' },
+                    { value: 'Soft Ground', label: 'Soft Ground' },
+                    { value: 'Hard Ground', label: 'Hard Ground' }
+                  ]} />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -891,14 +762,12 @@ export default function QuoteEditorPage() {
                 const allCategoryItems = Object.values(subcategories).flat()
                 if (allCategoryItems.length === 0) return null
 
-                // Calculate category total dynamically using dynamic evaluations
                 const categoryTotal = allCategoryItems
                   .filter(item => item.is_included)
                   .reduce((sum, item) => sum + item.computed_total, 0)
 
                 return (
                   <div key={category.id} className="border border-slate-700 rounded-lg overflow-hidden">
-                    {/* Category Header */}
                     <button
                       onClick={() => toggleCategory(category.id)}
                       className="w-full flex items-center justify-between px-4 py-3 bg-slate-800 hover:bg-slate-750 transition-colors"
@@ -914,69 +783,95 @@ export default function QuoteEditorPage() {
                       </div>
                     </button>
 
-                    {/* Category Content - Table */}
                     {isExpanded && (
                       <div className="bg-slate-900">
-                        {/* Table Header */}
-                        <div className="grid grid-cols-11 gap-2 px-4 py-2 bg-slate-850 border-b border-slate-800 text-xs font-medium text-slate-400">
-                          <div className="col-span-2">Status</div>
-                          <div className="col-span-1">Code</div>
-                          <div className="col-span-3">Description</div>
-                          <div className="col-span-1">Unit</div>
-                          <div className="col-span-1">Qty</div>
-                          <div className="col-span-2">Rate</div>
-                          <div className="col-span-1 text-right">Total</div>
-                        </div>
+                        <table className="w-full text-left border-collapse table-fixed">
+                          <thead>
+                            <tr className="bg-slate-850 border-b border-slate-800 text-xs font-medium text-slate-400">
+                              <th className="font-medium px-4 py-3 w-36 whitespace-nowrap">Status</th>
+                              <th className="font-medium pr-3 py-3 w-20 whitespace-nowrap">Code</th>
+                              <th className="font-medium pr-3 py-3 w-full">Description</th>
+                              <th className="font-medium pr-3 py-3 w-24 text-right whitespace-nowrap">Calc Qty</th>
+                              <th className="font-medium pr-3 py-3 w-20 text-right whitespace-nowrap">Qty</th>
+                              <th className="font-medium pr-3 py-3 w-24 text-right whitespace-nowrap">Cost</th>
+                              <th className="font-medium pr-3 py-3 w-28 text-right whitespace-nowrap">$/W Cost</th>
+                              <th className="font-medium pr-3 py-3 w-24 text-right whitespace-nowrap">Sales Rate</th>
+                              <th className="font-medium pr-4 py-3 w-28 text-right whitespace-nowrap">Sale $/W</th>
+                              <th className="font-medium pr-2 py-3 w-8"></th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800">
+                            {Object.entries(subcategories).map(([subcatName, items]) => {
+                              const subcatKey = `${category.id}-${subcatName}`
+                              const isSubcatExpanded = expandedSubcategories.has(subcatKey)
 
-                        {/* Subcategories */}
-                        <div className="divide-y divide-slate-800">
-                          {Object.entries(subcategories).map(([subcatName, items]) => {
-                            const subcatKey = `${category.id}-${subcatName}`
-                            const isSubcatExpanded = expandedSubcategories.has(subcatKey)
+                              const subcatTotal = items
+                                .filter(item => item.is_included)
+                                .reduce((sum, item) => sum + item.computed_total, 0)
 
-                            // Calculate subcategory total dynamically
-                            const subcatTotal = items
-                              .filter(item => item.is_included)
-                              .reduce((sum, item) => sum + item.computed_total, 0)
+                              return (
+                                <Fragment key={subcatKey}>
+                                  <tr className="bg-slate-850 hover:bg-slate-800 transition-colors cursor-pointer group"
+                                    onClick={() => {
+                                      const next = new Set(expandedSubcategories)
+                                      if (next.has(subcatKey)) {
+                                        next.delete(subcatKey)
+                                      } else {
+                                        next.add(subcatKey)
+                                      }
+                                      setExpandedSubcategories(next)
+                                    }}
+                                  >
+                                    <td colSpan={10} className="px-4 py-2">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          {isSubcatExpanded ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
+                                          <span className="text-xs font-medium text-slate-300">{subcatName}</span>
+                                        </div>
+                                        {subcatTotal > 0 && (
+                                          <span className="text-xs text-emerald-400 font-medium">
+                                            ${subcatTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
 
-                            return (
-                              <div key={subcatKey}>
-                                {/* Subcategory Header */}
-                                <button
-                                  onClick={() => {
-                                    const next = new Set(expandedSubcategories)
-                                    next.has(subcatKey) ? next.delete(subcatKey) : next.add(subcatKey)
-                                    setExpandedSubcategories(next)
-                                  }}
-                                  className="w-full flex items-center justify-between px-4 py-2 bg-slate-850 hover:bg-slate-800 transition-colors"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    {isSubcatExpanded ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
-                                    <span className="text-xs font-medium text-slate-300">{subcatName}</span>
-                                  </div>
-                                  {subcatTotal > 0 && (
-                                    <span className="text-xs text-emerald-400">
-                                      ${subcatTotal.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-                                    </span>
-                                  )}
-                                </button>
-
-                                {/* Subcategory Items */}
-                                {isSubcatExpanded && items.map((item) => {
-                                  return (
-                                    <QuoteItemRow
-                                      key={item.id}
-                                      computedItem={item}
-                                      scope={scope}
-                                      handleItemStatusChange={handleItemStatusChange}
-                                      handleItemQtyChange={handleItemQtyChange}
+                                  {isSubcatExpanded && items.map((item) => (
+                                    <LineItemRow
+                                      key={item.instance_id}
+                                      item={item}
+                                      scope={scope as PartialFormulaScope}
+                                      onStatusChange={(status) => handleItemStatusChange(item.instance_id, status)}
+                                      onQtyChange={(qty) => handleItemQtyChange(item.instance_id, qty)}
+                                      onUseCalcQtyChange={(useCalc) => {
+                                        const store = useQuoteEditorStore.getState()
+                                        store.setLineItemState(item.instance_id, { use_calculated_qty: useCalc })
+                                      }}
+                                      onOptionChange={(groupId, optionId) => {
+                                        const store = useQuoteEditorStore.getState()
+                                        store.setOptionSelection(item.instance_id, groupId, optionId)
+                                      }}
+                                      onFormulaOverride={(formula) => {
+                                        const store = useQuoteEditorStore.getState()
+                                        store.setFormulaOverride(item.instance_id, formula)
+                                      }}
+                                      onModifierChange={() => { }}
+                                      onDuplicate={() => {
+                                        const store = useQuoteEditorStore.getState()
+                                        store.duplicateLineItem(item.instance_id)
+                                      }}
+                                      onRemove={() => {
+                                        const store = useQuoteEditorStore.getState()
+                                        store.removeLineItem(item.instance_id)
+                                      }}
                                     />
-                                  )
-                                })}
-                              </div>
-                            )
-                          })}
-                        </div>
+                                  ))}
+                                </Fragment>
+                              )
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     )}
                   </div>
@@ -986,56 +881,166 @@ export default function QuoteEditorPage() {
           )}
         </div>
 
-        {/* RIGHT SIDE: Quote Summary */}
-        <div className="w-[220px] border-l border-slate-800 bg-slate-900 p-4 shrink-0">
-          <h3 className="text-lg font-semibold text-white mb-4">Quote Summary</h3>
+        {/* RIGHT SIDE: Quote Summary with tabs */}
+        <div className="w-[300px] border-l border-slate-800 bg-slate-900 shrink-0 overflow-y-auto flex flex-col">
+          {/* Tab bar */}
+          <div className="flex border-b border-slate-800 shrink-0">
+            {(['quote', 'markup', 'forecast'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveSummaryTab(tab)}
+                className={`flex-1 py-2.5 text-xs font-medium capitalize transition-colors ${activeSummaryTab === tab
+                    ? 'text-white border-b-2 border-brand-500'
+                    : 'text-slate-500 hover:text-slate-300'
+                  }`}
+              >
+                {tab === 'quote' ? 'Quote' : tab === 'markup' ? 'Markup' : 'Forecast'}
+              </button>
+            ))}
+          </div>
 
-          <div className="space-y-4">
-            {/* Subtotal */}
-            <div className="flex justify-between items-center py-2 border-b border-slate-800">
-              <span className="text-sm text-slate-400">Subtotal (ex GST)</span>
-              <span className="text-sm text-white font-medium">
-                ${totals.subtotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-
-            {/* Rebates */}
-            {totals.rebateTotal !== 0 && (
-              <div className="flex justify-between items-center py-2 border-b border-slate-800 text-emerald-400">
-                <span className="text-sm">Rebates (ex GST)</span>
-                <span className="text-sm font-medium">
-                  ${totals.rebateTotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
+          <div className="p-4 flex-1">
+            {activeSummaryTab === 'quote' && (
+              <div className="space-y-2 text-sm">
+                <h3 className="text-sm font-medium text-slate-300 mb-3">Quote Summary</h3>
+                {/* Cost subtotal */}
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                  <span className="text-slate-400">Cost Subtotal</span>
+                  <span className="text-slate-300 font-mono text-xs">
+                    {hasProject ? `$${totals.costSubtotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                  </span>
+                </div>
+                {/* Sales subtotal */}
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                  <span className="text-slate-400">Sales Subtotal</span>
+                  <span className="text-slate-300 font-mono text-xs">
+                    {hasProject ? `$${totals.subtotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                  </span>
+                </div>
+                {/* Rebates */}
+                {totals.rebateTotal !== 0 && (
+                  <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                    <span className="text-slate-400">Rebates & Incentives</span>
+                    <span className="text-green-400 font-mono text-xs">
+                      {totals.rebateTotal < 0 ? '-' : ''}${Math.abs(totals.rebateTotal).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                  <span className="text-slate-300 font-medium">Net (ex GST)</span>
+                  <span className="text-white font-mono font-medium text-xs">
+                    {hasProject ? `$${totals.netBeforeGST.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                  <span className="text-slate-400">GST (10%)</span>
+                  <span className="text-slate-300 font-mono text-xs">
+                    {hasProject ? `$${totals.gst.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-3 bg-slate-800/80 -mx-4 px-4 rounded-lg shadow-inner mt-4 border border-slate-700/30">
+                  <span className="text-base font-semibold text-white">Total (inc GST)</span>
+                  <span className="text-lg font-bold font-mono text-emerald-400">
+                    {hasProject ? `$${totals.total.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                  </span>
+                </div>
+                {installInfo.total_system_size_kw > 0 && (
+                  <div className="mt-3 pt-3 border-t border-slate-800 space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-500">System size</span>
+                      <span className="text-slate-300 font-mono">{installInfo.total_system_size_kw} kWp</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-500">Price / kW (net ex GST)</span>
+                      <span className="text-slate-300 font-mono">
+                        ${installInfo.total_system_size_kw > 0 ? (totals.netBeforeGST / installInfo.total_system_size_kw).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—'}/kW
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Net */}
-            <div className="flex justify-between items-center py-2 border-b border-slate-800">
-              <span className="text-sm text-slate-400">Net (ex GST)</span>
-              <span className="text-sm text-white font-medium">
-                ${totals.netBeforeGST.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
+            {activeSummaryTab === 'markup' && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-slate-300 mb-3">Markup Analysis</h3>
+                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
+                  <span className="text-sm text-slate-400">Proposed Markup</span>
+                  <span className="text-sm text-emerald-400 font-mono font-bold">
+                    {hasProject && totals.proposedMarkup > 0 ? `${((totals.proposedMarkup - 1) * 100).toFixed(1)}%` : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
+                  <span className="text-sm text-slate-400">Target Markup</span>
+                  <span className="text-sm text-brand-400 font-mono font-bold">
+                    {hasProject && totals.targetMarkup > 0 ? `${((totals.targetMarkup - 1) * 100).toFixed(1)}%` : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
+                  <span className="text-sm text-slate-400">Minimum Markup</span>
+                  <span className="text-sm text-amber-400 font-mono font-bold">
+                    {hasProject && totals.minimumMarkup > 0 ? `${((totals.minimumMarkup - 1) * 100).toFixed(1)}%` : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
+                  <span className="text-sm text-slate-400">Mid Point</span>
+                  <span className="text-sm text-slate-300 font-mono">
+                    {hasProject && totals.midPoint > 0 ? `${((totals.midPoint - 1) * 100).toFixed(1)}%` : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
+                  <span className="text-sm text-slate-400">Eng Hours</span>
+                  <span className="text-sm text-slate-300 font-mono">
+                    {hasProject ? `${totals.engHours.toFixed(1)} hrs` : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
+                  <span className="text-sm text-slate-400">PM Hours</span>
+                  <span className="text-sm text-slate-300 font-mono">
+                    {hasProject ? `${totals.pmHours.toFixed(1)} hrs` : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-3 bg-slate-800/80 -mx-4 px-4 rounded-lg shadow-inner mt-4 border border-slate-700/30">
+                  <span className="text-sm font-semibold text-white">Sales Total</span>
+                  <span className="text-base font-bold font-mono text-emerald-400">
+                    {hasProject ? `$${totals.netBeforeGST.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                  </span>
+                </div>
+              </div>
+            )}
 
-            {/* GST */}
-            <div className="flex justify-between items-center py-2 border-b border-slate-800">
-              <span className="text-sm text-slate-400">GST (10%)</span>
-              <span className="text-sm text-white font-medium">
-                ${totals.gst.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-
-            {/* Total */}
-            <div className="flex justify-between items-center py-3 bg-slate-800 -mx-4 px-4 rounded">
-              <span className="text-base font-semibold text-white">Total (inc GST)</span>
-              <span className="text-lg font-bold text-emerald-400">
-                ${totals.total.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
+            {activeSummaryTab === 'forecast' && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-slate-300 mb-3">Price Increase Forecast</h3>
+                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
+                  <span className="text-sm text-slate-400">Days to Start</span>
+                  <span className="text-sm text-slate-300 font-mono">
+                    {forecastSummary.decisionTimeDays.toFixed(0)} days
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
+                  <span className="text-sm text-slate-400">Today's Value</span>
+                  <span className="text-sm text-slate-300 font-mono">
+                    {hasProject ? `$${totals.netBeforeGST.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
+                  <span className="text-sm text-slate-400">Value at Start Date</span>
+                  <span className="text-sm text-slate-300 font-mono">
+                    {hasProject ? `$${forecastSummary.systemValueAtStartDate.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-3 bg-slate-800/80 -mx-4 px-4 rounded-lg shadow-inner mt-4 border border-slate-700/30">
+                  <span className="text-sm font-semibold text-white">% Price Increase</span>
+                  <span className={`text-base font-bold font-mono ${forecastSummary.percentPriceIncrease < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                    {(forecastSummary.percentPriceIncrease * 100).toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   )
 }
- 

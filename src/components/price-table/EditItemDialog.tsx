@@ -87,7 +87,7 @@ export default function EditItemDialog({ item, onSave, onClose, saving }: Props)
       case 'ac_cabling': return { ...base, conductor_material: fv('conductor_material') || null, single_core_price_per_meter: n('single_core_price_per_meter'), size_mm2: n('size_mm2'), '4c_plus_earth_price_per_meter': n('4c_plus_earth_price_per_meter'), inclusion: fv('inclusion') || null, notes: fv('notes') || null }
       case 'ac_combiner': return { ...base, ac_combiner_name: fv('ac_combiner_name') || null, ac_combiner_price_per_unit: n('ac_combiner_price_per_unit'), notes: fv('notes') || null }
       case 'dc_combiner': return { ...base, dc_combiner_name: fv('dc_combiner_name') || null, dc_combiner_price_per_unit: n('dc_combiner_price_per_unit'), notes: fv('notes') || null }
-      case 'dc_twin_cabling': return { ...base, size_twin_dc_cable_mm: n('size_twin_dc_cable_mm'), twin_dc_cable_price_per_mm: n('twin_dc_cable_price_per_mm'), notes: fv('notes') || null }
+      case 'dc_twin_cabling': return { ...base, dc_cabling_name: fv('dc_cabling_name') || null, size_twin_dc_cable_mm: n('size_twin_dc_cable_mm'), twin_dc_cable_price_per_mm: n('twin_dc_cable_price_per_mm'), notes: fv('notes') || null }
       case 'cabling_addons': return { ...base, addon_type: fv('addon_type') || null, item_name: name, cost_per_meter: n('cost_per_meter') }
       case 'switch_gear': return { ...base, item_name: name, item_type: fv('item_type') || null, total_price: n('total_price') }
       case 'ac_breaker': return { ...base, name, breaker_type: fv('breaker_type') || null, rating_a: n('rating_a'), price_per_breaker: n('price_per_breaker'), is_projects_needed: fb('is_projects_needed') }
@@ -227,7 +227,7 @@ export default function EditItemDialog({ item, onSave, onClose, saving }: Props)
       case 'dc_combiner':
         return <><div className="grid grid-cols-2 gap-4"><Input label="DC Combiner Name" value={fv('dc_combiner_name')} onChange={sf('dc_combiner_name')} /><Input label="Combiner Price/Unit ($)" type="number" step="0.01" value={fv('dc_combiner_price_per_unit')} onChange={sf('dc_combiner_price_per_unit')} prefix="$" /></div><Input label="Notes" value={fv('notes')} onChange={sf('notes')} /></>
       case 'dc_twin_cabling':
-        return <><div className="grid grid-cols-2 gap-4"><Input label="Twin DC Cable Size (mm)" type="number" step="0.1" value={fv('size_twin_dc_cable_mm')} onChange={sf('size_twin_dc_cable_mm')} suffix="mm" /><Input label="Twin DC Cable Price/mm ($)" type="number" step="0.001" value={fv('twin_dc_cable_price_per_mm')} onChange={sf('twin_dc_cable_price_per_mm')} prefix="$" /></div><Input label="Notes" value={fv('notes')} onChange={sf('notes')} /></>
+        return <><div className="grid grid-cols-3 gap-4"><Input label="Cabling Name" value={fv('dc_cabling_name')} onChange={sf('dc_cabling_name')} /><Input label="Twin DC Cable Size (mm)" type="number" step="0.1" value={fv('size_twin_dc_cable_mm')} onChange={sf('size_twin_dc_cable_mm')} suffix="mm" /><Input label="Twin DC Cable Price/mm ($)" type="number" step="0.001" value={fv('twin_dc_cable_price_per_mm')} onChange={sf('twin_dc_cable_price_per_mm')} prefix="$" /></div><Input label="Notes" value={fv('notes')} onChange={sf('notes')} /></>
       case 'cabling_addons':
         return <div className="grid grid-cols-2 gap-4"><Input label="Addon Type" value={fv('addon_type')} onChange={sf('addon_type')} /><Input label="Cost/Metre ($)" type="number" step="0.01" value={fv('cost_per_meter')} onChange={sf('cost_per_meter')} prefix="$" /></div>
       case 'switch_gear':

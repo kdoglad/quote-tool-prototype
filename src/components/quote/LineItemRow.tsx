@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { MoreVertical, Copy, Trash2, RotateCcw, AlertCircle, CheckCircle } from 'lucide-react'
+import { MoreVertical, Copy, Trash2, RotateCcw, AlertCircle, CheckCircle, Calculator } from 'lucide-react'
 import { clsx } from 'clsx'
 import type { ComputedLineItem, PartialFormulaScope, ModifierType, InclusionStatus } from '../../types/domain.types'
 import FormulaTooltip from './FormulaTooltip'
@@ -37,118 +37,7 @@ interface LineItemRowProps {
   onFormulaOverride: (formula: string | null) => void
 }
 
-/** Compact inline formula editor shown when the ƒ button is expanded. */
-function InlineFormulaEditor({
-  item,
-  scope,
-  onSave,
-  onClose,
-}: {
-  item: ComputedLineItem
-  scope: PartialFormulaScope
-  onSave: (formula: string | null) => void
-  onClose: () => void
-}) {
-  const [draft, setDraft] = useState(item.formula_override ?? item.default_formula ?? '')
-  const isOverridden = item.formula_override !== null
-  const validationError = draft.trim() ? validateFormula(draft) : null
-
-  const preview = (() => {
-    if (!draft.trim() || validationError) return null
-    const fullScope = buildScope(
-      { ...DEFAULT_SCOPE_VALUES, ...scope },
-      { base_price: item.base_unit_price, qty: item.qty }
-    )
-    return evaluateFormula(draft, fullScope)
-  })()
-
-  function handleSave() {
-    // If draft equals the default, treat as "no override"
-    const override = draft.trim() === (item.default_formula ?? '').trim() ? null : draft.trim() || null
-    onSave(override)
-    onClose()
-  }
-
-  return (
-    <div className="mt-2 bg-slate-800/80 border border-slate-700 rounded-lg p-3 space-y-2">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-medium text-slate-400">Formula</span>
-        {isOverridden && (
-          <button
-            onClick={() => { onSave(null); onClose() }}
-            className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors"
-            title="Revert to price table default"
-          >
-            <RotateCcw className="w-3 h-3" />
-            Reset to default
-          </button>
-        )}
-      </div>
-
-      {/* Default formula hint */}
-      {item.default_formula && (
-        <div className="text-xs text-slate-600 font-mono bg-slate-900/60 rounded px-2 py-1">
-          <span className="text-slate-500 not-italic">Default: </span>
-          <span
-            className="cursor-pointer hover:text-slate-400 transition-colors"
-            onClick={() => setDraft(item.default_formula ?? '')}
-            title="Click to restore"
-          >
-            {item.default_formula}
-          </span>
-        </div>
-      )}
-
-      <textarea
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        rows={2}
-        placeholder="e.g. base_price * system_kw * qty"
-        className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white
-                   font-mono placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-brand-500
-                   resize-none"
-        spellCheck={false}
-        autoFocus
-      />
-
-      {/* Validation + live preview */}
-      {draft.trim() && (
-        <div className="flex items-center gap-1.5 text-xs">
-          {validationError
-            ? <><AlertCircle className="w-3 h-3 text-red-400" /><span className="text-red-400">{validationError}</span></>
-            : preview?.error
-              ? <><AlertCircle className="w-3 h-3 text-red-400" /><span className="text-red-400">{preview.error}</span></>
-              : preview !== null
-                ? <><CheckCircle className="w-3 h-3 text-green-400" />
-                  <span className="text-green-400">
-                    = ${preview.value.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                  <span className="text-slate-600">(live scope)</span>
-                </>
-                : null
-          }
-        </div>
-      )}
-
-      <div className="flex gap-2 pt-1">
-        <button
-          onClick={handleSave}
-          disabled={!!validationError}
-          className="text-xs bg-brand-700 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed
-                     text-white rounded px-2.5 py-1 transition-colors"
-        >
-          Apply
-        </button>
-        <button
-          onClick={onClose}
-          className="text-xs text-slate-500 hover:text-slate-300 transition-colors px-2 py-1"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  )
-}
+import { InlineFormulaEditor } from './InlineFormulaEditor'
 
 const SPEC_FIELD_MAPPINGS: Record<string, { label: string; key: string }[]> = {
   ac_breaker: [
@@ -196,6 +85,7 @@ const SPEC_FIELD_MAPPINGS: Record<string, { label: string; key: string }[]> = {
     { label: 'Notes', key: 'notes' }
   ],
   dc_twin_cabling: [
+    { label: 'Cabling Name', key: 'dc_cabling_name' },
     { label: 'Size', key: 'size_twin_dc_cable_mm' },
     { label: 'Notes', key: 'notes' }
   ],
@@ -300,9 +190,11 @@ export default function LineItemRow({
   onRemove,
   onOptionChange,
   onFormulaOverride,
-}: LineItemRowProps) {
+  onUseCalcQtyChange,
+}: LineItemRowProps & { onUseCalcQtyChange?: (val: boolean) => void }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [formulaOpen, setFormulaOpen] = useState(false)
+  const [descOpen, setDescOpen] = useState(false)
   const [qtyStr, setQtyStr] = useState(String(item.qty))
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -318,6 +210,88 @@ export default function LineItemRow({
   const isFormulaOverridden = item.formula_override !== null
   const optionDelta = item.computed_total - item.formula_total
 
+  // Keys to exclude from spec display
+  const EXCLUDED_KEYS = new Set(['created_at', 'updated_at', 'id', 'price_item_id', 'version_id'])
+
+  // Primary descriptor key per type_value (shown as the main tag)
+  const MAIN_DESCRIPTOR_KEYS: Record<string, string[]> = {
+    panels: ['item_name', 'brand', 'item_type'],
+    inverters: ['model', 'brand', 'item_name'],
+    optimisers: ['optimiser_name', 'brand', 'item_name'],
+    batteries: ['item_name', 'brand', 'nominal_kwh'],
+    battery_inverter: ['item_name', 'brand', 'kva'],
+    racking: ['racking_type', 'item_name'],
+    additional_racking: ['item_name', 'unit'],
+    ac_cabling: ['size_mm2', 'inclusion', 'conductor_material'],
+    dc_cabling: ['size_mm2', 'inclusion', 'conductor_material'],
+    dc_twin_cabling: ['dc_cabling_name', 'size_twin_dc_cable_mm'],
+    ac_combiner: ['ac_combiner_name', 'notes'],
+    dc_combiner: ['dc_combiner_name', 'notes'],
+    inverter_station: ['inverter_station'],
+    bessdb: ['bessdb_type'],
+    pvdb: ['pvdb_type'],
+    ac_breaker: ['name', 'rating_a', 'breaker_type'],
+    switch_gear: ['item_name', 'item_type'],
+    install: ['install_item', 'item_type', 'unit'],
+    safety: ['item_name', 'item_type'],
+    monitoring_warranty: ['item_name', 'item_type'],
+    monitoring_addons: ['item_name', 'item_type'],
+    netnada: ['plan_type', 'payment_plan'],
+    netnada_addons: ['item_name', 'payment_plan'],
+    prelim_general: ['item_name', 'item_type'],
+    grid_protection: ['dnsp', 'required_over_kva'],
+    grid_connection: ['dnsp', 'low_size_kva', 'high_side_kva'],
+    witness_injection: ['dnsp', 'required_over_kva'],
+    harm_filtering: ['item_type'],
+    pfc: ['pfc_type'],
+    lifting: ['lifting_type', 'name'],
+    travel_accoms_freight: ['travel_rates', 'distance_frm_city_center'],
+    cabling_addons: ['item_name', 'addon_type'],
+  }
+
+  // Get main descriptor value for this item
+  const mainDescriptor = (() => {
+    if (!item.specData || !item.type_value) return null
+    const keys = MAIN_DESCRIPTOR_KEYS[item.type_value] || []
+    const specFields = SPEC_FIELD_MAPPINGS[item.type_value] || []
+
+    for (const k of keys) {
+      const val = item.specData[k]
+      if (val !== undefined && val !== null && val !== '') {
+        const field = specFields.find(f => f.key === k)
+        return {
+          key: k,
+          label: field ? field.label : k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          value: typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val)
+        }
+      }
+    }
+    // Fallback: first non-excluded, non-empty value
+    for (const [k, v] of Object.entries(item.specData)) {
+      if (!EXCLUDED_KEYS.has(k) && v !== undefined && v !== null && v !== '') {
+        const field = specFields.find(f => f.key === k)
+        return {
+          key: k,
+          label: field ? field.label : k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          value: typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v)
+        }
+      }
+    }
+    return null
+  })()
+
+  // All remaining spec fields (excluding the main descriptor and excluded keys)
+  const allSpecFields = (() => {
+    if (!item.specData || !item.type_value) return []
+    const specFields = SPEC_FIELD_MAPPINGS[item.type_value] || []
+    return specFields.filter((f) => {
+      if (EXCLUDED_KEYS.has(f.key)) return false
+      if (mainDescriptor && mainDescriptor.key === f.key) return false
+      const val = item.specData?.[f.key]
+      return val !== undefined && val !== null && val !== ''
+    })
+  })()
+
   useEffect(() => {
     if (!menuOpen) return
     function handleClick(e: MouseEvent) {
@@ -331,7 +305,6 @@ export default function LineItemRow({
     <tr
       className={clsx(
         'border-b border-slate-800/50 last:border-0 group text-sm',
-        isExcluded && 'opacity-50',
         item.is_duplicate && 'bg-slate-900/40',
       )}
     >
@@ -364,59 +337,131 @@ export default function LineItemRow({
 
       {/* Name + formula editor + option group selectors */}
       <td className="pr-3 py-2 align-top">
-        {/* Name row */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={clsx(
-            'text-slate-200',
-            isExcluded && 'line-through text-slate-500',
-            item.inclusion_status === 'appears_adequate' && 'italic',
-          )}>
-            {item.name}
-          </span>
-          {item.inclusion_status === 'provisional_sum' && (
-            <span className="text-xs font-semibold text-amber-400 bg-amber-900/40 px-1.5 py-0.5 rounded shrink-0">PS</span>
-          )}
-          {item.inclusion_status === 'appears_adequate' && (
-            <span className="text-xs text-blue-400 bg-blue-900/30 px-1 rounded shrink-0">appears adequate</span>
-          )}
-          {item.is_custom && (
-            <span className="text-xs text-amber-500 bg-amber-900/30 px-1 rounded shrink-0">custom</span>
-          )}
 
-          {/* Formula toggle button — always shown, overridden state highlighted */}
-          {!readOnly && !isExcluded && (
-            <button
-              onClick={() => setFormulaOpen((v) => !v)}
-              title={isFormulaOverridden ? 'Formula overridden for this quote — click to edit' : 'Edit formula for this quote'}
-              className={clsx(
-                'text-xs px-1.5 py-0.5 rounded font-mono transition-colors',
-                formulaOpen
-                  ? 'bg-brand-800 text-brand-200'
-                  : isFormulaOverridden
-                    ? 'bg-amber-900/50 text-amber-400 hover:bg-amber-900/70'
-                    : 'bg-slate-800 text-slate-500 hover:text-slate-300 hover:bg-slate-700'
-              )}
-            >
-              ƒ{isFormulaOverridden ? '*' : ''}
-            </button>
-          )}
-
-          <FormulaTooltip item={item} scope={scope} />
-        </div>
-
-        {/* Spec fields render */}
-        {item.specData && SPEC_FIELD_MAPPINGS[item.type_value || ''] && (
-          <div className="flex flex-wrap gap-x-2 gap-y-1 mt-1 text-[11px] text-slate-400">
-            {SPEC_FIELD_MAPPINGS[item.type_value || ''].map((field) => {
-              const val = item.specData?.[field.key];
-              if (val === undefined || val === null || val === '') return null;
-              const displayVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val);
-              return (
-                <span key={field.key} className="bg-slate-800/40 px-1.5 py-0.5 rounded border border-slate-750/30">
-                  <span className="text-slate-500 font-medium">{field.label}:</span> {displayVal}
+        {/* Spec fields — box descriptor + collapsible extras */}
+        {item.specData && mainDescriptor ? (
+          <div className="w-full">
+            {/* Main row: descriptor box + badges + fx button */}
+            <div className="flex items-center gap-1.5 w-full">
+              {/* Main descriptor box — click to show/hide all fields */}
+              <button
+                onClick={() => setDescOpen((v) => !v)}
+                className={clsx(
+                  'flex-1 flex items-center justify-between gap-1.5 px-2.5 py-1 rounded border text-xs text-left transition-colors min-w-0',
+                  descOpen
+                    ? 'bg-brand-900/40 border-brand-600/50 text-brand-200'
+                    : 'bg-slate-800 border-slate-600/50 text-slate-200 hover:border-slate-400 hover:text-white'
+                )}
+              >
+                <span className="truncate flex items-center gap-2">
+                  <span className={clsx('font-semibold truncate', descOpen ? 'text-brand-300' : 'text-slate-200')}>
+                    {item.name}
+                  </span>
+                  {mainDescriptor.value !== item.name && (
+                    <span className="truncate flex items-center text-[11px]">
+                      <span className={clsx('mr-1', descOpen ? 'text-brand-400/80' : 'text-slate-500')}>
+                        {mainDescriptor.label}:
+                      </span>
+                      <span className={clsx(descOpen ? 'text-brand-300' : 'text-slate-400')}>
+                        {mainDescriptor.value}
+                      </span>
+                    </span>
+                  )}
                 </span>
-              );
-            })}
+                {allSpecFields.length > 0 && (
+                  <span className={clsx('text-[10px] font-normal shrink-0', descOpen ? 'text-brand-400' : 'text-slate-500')}>
+                    {descOpen ? 'Hide' : 'Show'}
+                  </span>
+                )}
+              </button>
+
+              {/* Status badges */}
+              {item.inclusion_status === 'provisional_sum' && (
+                <span className="text-xs font-semibold text-amber-400 bg-amber-900/40 px-1.5 py-0.5 rounded shrink-0">PS</span>
+              )}
+              {item.inclusion_status === 'appears_adequate' && (
+                <span className="text-xs text-blue-400 bg-blue-900/30 px-1 rounded shrink-0">appears adequate</span>
+              )}
+              {item.is_custom && (
+                <span className="text-xs text-amber-500 bg-amber-900/30 px-1 rounded shrink-0">custom</span>
+              )}
+
+              {/* Formula toggle button */}
+              {!readOnly && (
+                <button
+                  onClick={() => setFormulaOpen((v) => !v)}
+                  title={isFormulaOverridden ? 'Formula overridden for this quote — click to edit' : 'Edit formula for this quote'}
+                  className={clsx(
+                    'relative flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200',
+                    'border border-slate-700/50 shadow-sm hover:scale-105 hover:shadow-md',
+                    formulaOpen
+                      ? 'bg-brand-600 border-brand-500 text-white shadow-brand-900/20'
+                      : isFormulaOverridden
+                        ? 'bg-amber-900/40 border-amber-500/50 text-amber-400 hover:bg-amber-800/60 hover:border-amber-500'
+                        : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 hover:border-slate-600'
+                  )}
+                >
+                  <span className="font-serif italic text-[11px] leading-none font-bold">fx</span>
+                  {isFormulaOverridden && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500"></span>}
+                </button>
+              )}
+
+              <FormulaTooltip item={item} scope={scope} />
+            </div>
+
+            {/* Expanded spec tags */}
+            {descOpen && allSpecFields.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {allSpecFields.map((field) => {
+                  const val = item.specData?.[field.key]
+                  if (val === undefined || val === null || val === '') return null
+                  const displayVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val)
+                  return (
+                    <span key={field.key} className="text-[11px] bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-700/40 text-slate-400">
+                      <span className="text-slate-500 font-medium">{field.label}:</span> {displayVal}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Fallback for items with no specData — show name + badges + fx */
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={clsx(
+              'text-sm text-slate-200',
+              item.inclusion_status === 'appears_adequate' && 'italic text-slate-400',
+            )}>
+              {item.name}
+            </span>
+            {item.inclusion_status === 'provisional_sum' && (
+              <span className="text-xs font-semibold text-amber-400 bg-amber-900/40 px-1.5 py-0.5 rounded shrink-0">PS</span>
+            )}
+            {item.inclusion_status === 'appears_adequate' && (
+              <span className="text-xs text-blue-400 bg-blue-900/30 px-1 rounded shrink-0">appears adequate</span>
+            )}
+            {item.is_custom && (
+              <span className="text-xs text-amber-500 bg-amber-900/30 px-1 rounded shrink-0">custom</span>
+            )}
+            {!readOnly && (
+              <button
+                onClick={() => setFormulaOpen((v) => !v)}
+                title={isFormulaOverridden ? 'Formula overridden for this quote — click to edit' : 'Edit formula for this quote'}
+                className={clsx(
+                  'relative flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200',
+                  'border border-slate-700/50 shadow-sm hover:scale-105 hover:shadow-md',
+                  formulaOpen
+                    ? 'bg-brand-600 border-brand-500 text-white shadow-brand-900/20'
+                    : isFormulaOverridden
+                      ? 'bg-amber-900/40 border-amber-500/50 text-amber-400 hover:bg-amber-800/60 hover:border-amber-500'
+                      : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 hover:border-slate-600'
+                )}
+              >
+                <span className="font-serif italic text-[11px] leading-none font-bold">fx</span>
+                {isFormulaOverridden && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500"></span>}
+              </button>
+            )}
+            <FormulaTooltip item={item} scope={scope} />
           </div>
         )}
 
@@ -431,7 +476,7 @@ export default function LineItemRow({
         )}
 
         {/* Option group selectors */}
-        {hasOptions && !isExcluded && !formulaOpen && (
+        {hasOptions && !formulaOpen && (
           <div className="mt-1.5 space-y-1">
             {item.option_groups.map((group) => {
               const selectedId = item.selected_options[group.id] ?? ''
@@ -474,10 +519,26 @@ export default function LineItemRow({
         )}
       </td>
 
-      {/* Unit */}
-      <td className="pr-3 py-2 text-slate-500 text-xs w-10 align-top pt-2.5">{item.unit}</td>
 
-      {/* Qty */}
+
+      {/* Calc Qty */}
+      <td className="pr-3 py-2 w-24 align-top text-right pt-2">
+        <div className="flex items-center justify-end gap-2">
+          <span className="text-xs text-slate-400 font-mono">
+            {item.calculated_qty !== undefined ? item.calculated_qty.toLocaleString('en-AU', { maximumFractionDigits: 2 }) : '-'}
+          </span>
+          <input
+            type="checkbox"
+            checked={item.use_calculated_qty ?? true}
+            onChange={(e) => onUseCalcQtyChange?.(e.target.checked)}
+            disabled={readOnly || isExcluded}
+            className="w-3.5 h-3.5 rounded border-slate-600 bg-slate-800 text-brand-500 focus:ring-brand-500 cursor-pointer disabled:opacity-40"
+            title="Use calculated quantity instead of manual"
+          />
+        </div>
+      </td>
+
+      {/* Qty (Manual) */}
       <td className="pr-3 py-2 w-20 align-top">
         <input
           type="number"
@@ -490,6 +551,9 @@ export default function LineItemRow({
             const parsed = parseFloat(val);
             if (!isNaN(parsed)) {
               onQtyChange(parsed);
+              if (item.use_calculated_qty ?? true) {
+                onUseCalcQtyChange?.(false);
+              }
             } else {
               onQtyChange(0);
             }
@@ -500,51 +564,32 @@ export default function LineItemRow({
             }
           }}
           disabled={readOnly || isExcluded}
-          className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white font-mono
-                     focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-40 text-right"
+          className={clsx(
+            "w-full bg-slate-800 border rounded px-2 py-1 text-xs font-mono text-right focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-40",
+            (item.use_calculated_qty ?? true) ? "border-slate-700 text-slate-500" : "border-brand-500/50 text-white"
+          )}
         />
       </td>
 
-      {/* Base unit rate */}
-      <td className="pr-3 py-2 text-right font-mono text-slate-400 text-xs w-24 align-top pt-2.5">
-        ${item.base_unit_price.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+      {/* Cost */}
+      <td className="pr-3 py-2 text-right font-mono text-xs w-24 align-top pt-2.5 text-slate-400">
+        {item.is_included ? `$${(item.computed_total || 0).toLocaleString('en-AU', { minimumFractionDigits: 2 })}` : '—'}
       </td>
 
-      {/* Total */}
-      <td className="pr-3 py-2 text-right font-mono text-sm w-28 align-top pt-2.5">
-        {item.is_included ? (
-          <div>
-            <span className={clsx(
-              item.computed_total < 0 ? 'text-green-400' : 'text-slate-200',
-              hasModifier && 'text-amber-300',
-              item.inclusion_status === 'provisional_sum' && 'text-amber-300',
-            )}>
-              ${item.computed_total.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-            </span>
-            {hasOptions && optionDelta !== 0 && (
-              <div className="text-xs text-slate-600 mt-0.5">
-                base {item.formula_total < 0 ? '-' : ''}${Math.abs(item.formula_total).toLocaleString('en-AU', { maximumFractionDigits: 0 })}
-                {' '}{optionDelta > 0 ? '+' : ''}${optionDelta.toLocaleString('en-AU', { maximumFractionDigits: 0 })}
-              </div>
-            )}
-          </div>
-        ) : (
-          <span className="text-slate-600">—</span>
-        )}
+      {/* $/W Cost */}
+      <td className="pr-3 py-2 text-right font-mono text-xs w-28 align-top pt-2.5 text-slate-400">
+        {item.is_included && item.cost_per_watt ? `$${(item.cost_per_watt).toLocaleString('en-AU', { minimumFractionDigits: 4 })}` : '—'}
       </td>
 
-      {/* Comparison delta */}
-      {showDelta && (
-        <td className="pr-3 py-2 text-right font-mono text-xs w-24 align-top pt-2.5">
-          {item.is_included && delta !== 0 ? (
-            <span className={delta > 0 ? 'text-red-400' : 'text-green-400'}>
-              {delta > 0 ? '+' : ''}${delta.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
-            </span>
-          ) : (
-            <span className="text-slate-700">—</span>
-          )}
-        </td>
-      )}
+      {/* Sales Rate */}
+      <td className="pr-3 py-2 text-right font-mono text-xs w-24 align-top pt-2.5 text-brand-400">
+        {item.is_included && item.sales_rate ? `$${(item.sales_rate).toLocaleString('en-AU', { minimumFractionDigits: 2 })}` : '—'}
+      </td>
+
+      {/* Sale $/W */}
+      <td className="pr-4 py-2 text-right font-mono text-xs w-28 align-top pt-2.5 text-brand-400">
+        {item.is_included && item.sale_per_watt ? `$${(item.sale_per_watt).toLocaleString('en-AU', { minimumFractionDigits: 4 })}` : '—'}
+      </td>
 
       {/* Context menu */}
       <td className="pr-2 py-2 w-8 align-top">
@@ -597,4 +642,4 @@ export default function LineItemRow({
     </tr>
   )
 }
- 
+

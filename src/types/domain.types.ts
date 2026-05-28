@@ -128,10 +128,16 @@ export interface FormulaScope {
   // Flags
   has_bess: boolean
   has_ev: boolean
+  optimisers?: string
   // Cabling
   dc_cable_m: number
   ac_cable_m: number
   cable_run_m: number
+  dc_cabling_type: string
+  ac_inverter_pvdb_type: string
+  ac_pvdb_msb_type: string
+  cable_tray_type: string
+  trenching_type: string
   trench_m: number
   trench_type: TrenchType
   trench_depth_m: number
@@ -153,6 +159,8 @@ export interface FormulaScope {
   veec_price: number
   fit_rate: number
   fit_hours: number
+  panel_wattage?: number
+  panel_qty?: number
   // Item-specific (injected per-evaluation)
   base_price: number
   qty: number
@@ -185,6 +193,10 @@ export interface ComputedLineItem {
   name: string
   unit: string
   qty: number
+  manual_qty: number
+  calculated_qty: number
+  use_calculated_qty: boolean
+  use_manual_qty: boolean
   base_unit_price: number
   formula: string | null
   modifier_type: ModifierType
@@ -204,6 +216,10 @@ export interface ComputedLineItem {
   sort_order: number
   specData?: Record<string, any>
   type_value?: string
+  cost: number
+  cost_per_watt: number
+  sales_rate: number
+  sale_per_watt: number
 }
 
 // ============================================================
@@ -325,6 +341,8 @@ export interface QuoteLineItemState {
   price_item_id: string | null  // null for custom items
   inclusion_status: InclusionStatus
   qty: number
+  use_calculated_qty?: boolean
+  use_manual_qty?: boolean
   // groupId → optionId; only groups the user has explicitly chosen are stored
   selected_options: Record<string, string>
   // null = use the price item's default formula; string = per-quote override
@@ -382,6 +400,13 @@ export interface SiteDetailsFormData {
   dnsp: string
   valid_until: string
   internal_notes: string
+  // Cabling type dropdowns
+  dc_cabling_type?: string
+  ac_inverter_pvdb_type?: string
+  ac_pvdb_msb_type?: string
+  cable_tray_type?: string
+  trenching_type?: string
+  optimisers?: string
 }
 
 // ============================================================

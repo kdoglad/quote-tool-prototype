@@ -221,6 +221,7 @@ export interface QuoteResult {
 
     // Metadata
     calculatedAt: Date;
+    internalNotes?: string;
 }
 
 // ============================================================================

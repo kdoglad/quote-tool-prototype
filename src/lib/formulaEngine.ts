@@ -21,14 +21,14 @@ math.import(
 
 // Allowed safe math functions injected into scope
 const SAFE_FUNCTIONS = {
-  abs:   Math.abs,
-  max:   (...args: number[]) => Math.max(...args),
-  min:   (...args: number[]) => Math.min(...args),
+  abs: Math.abs,
+  max: (...args: number[]) => Math.max(...args),
+  min: (...args: number[]) => Math.min(...args),
   round: Math.round,
-  ceil:  Math.ceil,
+  ceil: Math.ceil,
   floor: Math.floor,
-  sqrt:  Math.sqrt,
-  pow:   Math.pow,
+  sqrt: Math.sqrt,
+  pow: Math.pow,
 }
 
 const FORMULA_TIMEOUT_MS = 100
@@ -145,5 +145,83 @@ export function validateFormula(formula: string): string | null {
     return null
   } catch (err) {
     return err instanceof Error ? err.message : 'Invalid formula syntax'
+  }
+}
+
+/**
+ * Automatically calculate quantity for standard line items based on category/type rules and current scope.
+ */
+export function calculateQtyForLineItem(
+  item: { category: string; type_value?: string; unit?: string; specData?: any },
+  scope: PartialFormulaScope
+): number {
+  const systemKw = scope.system_kw || 0
+  const panelWatt = scope.panel_wattage || 440 // Default panel wattage if not specified
+  const panelQty = scope.panel_qty || Math.floor((systemKw * 1000) / panelWatt)
+
+  switch (item.type_value) {
+    case 'panels': {
+      const watt = parseFloat(item.specData?.wattage) || panelWatt
+      return Math.floor((systemKw * 1000) / watt)
+    }
+    case 'inverters': {
+      const watt = parseFloat(item.specData?.watt) || 50000
+      return Math.ceil((systemKw * 800) / watt)
+    }
+    case 'optimisers': {
+      if (
+        item.specData?.item_code?.toLowerCase().includes('not-required') ||
+        item.specData?.item_name?.toLowerCase().includes('not required')
+      ) {
+        return 0
+      }
+      const sizeVa = parseFloat(item.specData?.size_va) || 0
+      if (sizeVa > panelWatt * 2) {
+        return Math.ceil(panelQty / 2)
+      }
+      return panelQty
+    }
+    case 'racking':
+    case 'additional_racking': {
+      const unit = (item.unit || '').toLowerCase()
+      if (unit.includes('panel') || unit === 'ea') {
+        return panelQty
+      }
+      return systemKw
+    }
+    case 'batteries': {
+      const nominalKwh = parseFloat(item.specData?.nominal_kwh) || 100
+      const bessKwh = scope.bess_kwh || 0
+      return bessKwh > 0 ? Math.ceil(bessKwh / nominalKwh) : 1
+    }
+    case 'battery_inverter': {
+      const kva = parseFloat(item.specData?.kva) || 100
+      const systemKva = scope.system_kva || (systemKw * 1.25)
+      return Math.ceil(systemKva / kva)
+    }
+    case 'ac_cabling': {
+      return scope.ac_cable_m || scope.cable_run_m || 50
+    }
+    case 'dc_twin_cabling': {
+      return scope.dc_cable_m || scope.cable_run_m || 100
+    }
+    case 'cabling_addons': {
+      return scope.cable_run_m || 50
+    }
+    case 'install': {
+      const unit = (item.unit || '').toLowerCase()
+      if (unit.includes('kw')) return systemKw
+      if (unit.includes('panel')) return panelQty
+      return 1
+    }
+    case 'safety': {
+      const unit = (item.unit || '').toLowerCase()
+      if (unit === 'm' || unit.includes('meter') || unit.includes('metre')) {
+        return scope.roof_perimeter_m || 100
+      }
+      return 1
+    }
+    default:
+      return 1
   }
 }
