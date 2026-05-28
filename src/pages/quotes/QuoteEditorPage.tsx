@@ -68,21 +68,26 @@ export default function QuoteEditorPage() {
     hv_customer: false, site_inspection_confirmed: false,
     dc_cabling_type: 'No Match', ac_inverter_pvdb_type: 'No Match', ac_pvdb_msb_type: 'No Match',
     cable_tray_type: 'No Match', trenching_type: 'No Match', optimisers: 'No Match',
-    client_cooperativeness: 'Very Co-operative',
-    switchboard_complexity: 'Not Involved',
-    site_complexity: 'None',
-    site_complexity2: 'None',
+    client_cooperativeness: 'Average',
+    switchboard_complexity: 'Appears to be Adequate',
+    misc1: 'None',
+    misc2: 'None',
     racking: 'Base Tin Installation',
     racking2: 'Flush Mounted',
     system_complexity: 'Standard',
     builders: 'Not Involved',
-    consultants: 'Not Involved',
-    architects: 'Not Involved',
+    architects_consultants: 'Not Involved',
     ppa_funders: 'Not Involved',
+    location: 'Zone1',
+    install_timeline: 'Unconstrained',
+    dnsp_override: 'No Match',
+    large_small_team: 'Small',
     stc_lgc_split: 'No',
     transformer: 'Not Required',
     rollout: 'No (1-2 sites)',
     safety: 'Standard',
+    battery_pcm: 'None',
+    hv_customer_pcm: 'No',
   })
 
   const [projectName, setProjectName] = useState('')
@@ -106,20 +111,25 @@ export default function QuoteEditorPage() {
     ...scope,
     client_cooperativeness: installInfo.client_cooperativeness,
     switchboard_complexity: installInfo.switchboard_complexity,
-    site_complexity: installInfo.site_complexity,
-    site_complexity2: installInfo.site_complexity2,
+    misc1: installInfo.misc1,
+    misc2: installInfo.misc2,
     racking: installInfo.racking,
     racking2: installInfo.racking2,
     system_complexity: installInfo.system_complexity,
     builders: installInfo.builders,
-    consultants: installInfo.consultants,
-    architects: installInfo.architects,
+    architects_consultants: installInfo.architects_consultants,
     ppa_funders: installInfo.ppa_funders,
+    location: installInfo.location,
+    install_timeline: installInfo.install_timeline,
+    dnsp_override: installInfo.dnsp_override,
+    large_small_team: installInfo.large_small_team,
     stc_lgc_split: installInfo.stc_lgc_split,
     transformer: installInfo.transformer,
     rollout: installInfo.rollout,
     safety: installInfo.safety,
-    hv_customer: installInfo.hv_customer,
+    optimisers: installInfo.optimisers,
+    battery_pcm: installInfo.battery_pcm,
+    hv_customer_pcm: installInfo.hv_customer_pcm,
   }), [scope, installInfo])
 
   const totals = useQuoteTotals(computedItems, installInfo.total_system_size_kw, complexityScope)
@@ -668,43 +678,48 @@ export default function QuoteEditorPage() {
             <div className="pt-4 border-t border-slate-800 mt-6">
               <h3 className="text-sm font-medium text-slate-300 mb-3 uppercase tracking-wider">Project Complexity Modifiers</h3>
               <div className="space-y-3">
-                <Select label="Client Co-operativeness" value={installInfo.client_cooperativeness || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, client_cooperativeness: e.target.value }))}
-                  options={['Very Co-operative', 'Average', 'Difficult', 'Very Difficult', 'CUB', 'No Match'].map(v => ({ value: v, label: v }))} />
-                <Select label="Racking Type" value={installInfo.racking || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking: e.target.value }))}
-                  options={['Base Tin Installation', 'Base Tile Installation', 'Ground Mounted (Fixed Tilt)', 'Ground Mounted (Single Axis)', 'Concrete Roof Mounted (not including waterproofing)', 'Ballasted System', 'Floating (ex. Anchors and Extras)', 'Carpark', 'No Match'].map(v => ({ value: v, label: v }))} />
-                <Select label="Racking 2 (Additional)" value={installInfo.racking2 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking2: e.target.value }))}
-                  options={['Flush Mounted', 'Frameless', 'Klip Lock Addition', 'Tilt Legs Addition', 'Wind Zone C/D', 'Klip Lock + Tilt Legs Addition', 'Klip Lock Addition + Wind Zone C/D', 'Tilt Legs + Wind Zone C/D Addition', 'Klip Lock + Tilt Legs Addition +  Wind Zone C/D Addition', 'No Match'].map(v => ({ value: v, label: v }))} />
-                <Select label="System Complexity" value={installInfo.system_complexity || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, system_complexity: e.target.value }))}
-                  options={['Standard', 'Complex', 'Multi Roof', 'Large Scale Roof', 'Ground mounted mechanical + electrical', 'No Match'].map(v => ({ value: v, label: v }))} />
-                <Select label="Switchboard" value={installInfo.switchboard_complexity || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, switchboard_complexity: e.target.value }))}
-                  options={['Appears to be Adequate', 'May Require Upgrade (Excluded from quote)', 'Requires extension/New cabinet', 'Not Involved', 'Involved', 'Heavily or Continuously Involved', 'No Match'].map(v => ({ value: v, label: v }))} />
-                <Select label="Site Complexity 1" value={installInfo.site_complexity || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, site_complexity: e.target.value }))}
-                  options={['None', 'DA', 'Mine Site', 'Tricky Cable Run', 'AFC Not In Scope', 'Building Certification', 'Carport (SCP)', 'Carport (Other)', 'Building Height >20m', 'GSES', 'Generator on site'].map(v => ({ value: v, label: v }))} />
-                <Select label="Site Complexity 2" value={installInfo.site_complexity2 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, site_complexity2: e.target.value }))}
-                  options={['None', 'DA', 'Mine Site', 'Tricky Cable Run', 'AFC Not In Scope', 'Building Certification', 'Carport (SCP)', 'Carport (Other)', 'Building Height >20m', 'GSES', 'Generator on site'].map(v => ({ value: v, label: v }))} />
-                <Select label="Builders" value={installInfo.builders || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, builders: e.target.value }))}
+                <Select label="1. Racking" value={installInfo.racking || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking: e.target.value }))}
+                  options={['Base Tin Installation', 'Base Tile Installation', 'Ground Mounted (Fixed Tilt)', 'Ground Mounted (Single Axis)', 'Concrete Roof Mounted (not including waterproofing)', 'Ballasted System', 'Floating (ex. Anchors and Extras)', 'Carpark'].map(v => ({ value: v, label: v }))} />
+                <Select label="2. Racking 2" value={installInfo.racking2 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking2: e.target.value }))}
+                  options={['Flush Mounted', 'Frameless', 'Klip Lock Addition', 'Tilt Legs Addition', 'Wind Zone C/D', 'Klip Lock + Tilt Legs Addition', 'Klip Lock Addition + Wind Zone C/D', 'Tilt Legs + Wind Zone C/D Addition', 'Klip Lock + Tilt Legs Addition + Wind Zone C/D Addition'].map(v => ({ value: v, label: v }))} />
+                <Select label="3. System Complexity" value={installInfo.system_complexity || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, system_complexity: e.target.value }))}
+                  options={['Standard', 'Complex', 'Multi Roof', 'Large Scale Roof', 'Ground mounted mechanical + electrical'].map(v => ({ value: v, label: v }))} />
+                <Select label="4. Client co-operativeness" value={installInfo.client_cooperativeness || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, client_cooperativeness: e.target.value }))}
+                  options={['Very Co-operative', 'Average', 'Difficult', 'Very Difficult', 'CUB'].map(v => ({ value: v, label: v }))} />
+                <Select label="5. Builders" value={installInfo.builders || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, builders: e.target.value }))}
                   options={['Not Involved', 'Involved', 'Heavily or Continuously Involved'].map(v => ({ value: v, label: v }))} />
-                <Select label="Consultants" value={installInfo.consultants || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, consultants: e.target.value }))}
+                <Select label="6/7. Architects/Consultants" value={installInfo.architects_consultants || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, architects_consultants: e.target.value }))}
                   options={['Not Involved', 'Involved'].map(v => ({ value: v, label: v }))} />
-                <Select label="Architects" value={installInfo.architects || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, architects: e.target.value }))}
-                  options={['Not Involved', 'Involved'].map(v => ({ value: v, label: v }))} />
-                <Select label="PPA Funders" value={installInfo.ppa_funders || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ppa_funders: e.target.value }))}
+                <Select label="8. PPA Funders" value={installInfo.ppa_funders || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ppa_funders: e.target.value }))}
                   options={['Not Involved', 'Clearsky', 'Solarbay/Green Peak'].map(v => ({ value: v, label: v }))} />
-                <Select label="STC/LGC Split" value={installInfo.stc_lgc_split || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, stc_lgc_split: e.target.value }))}
+                <Select label="9. Location" value={installInfo.location || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, location: e.target.value }))}
+                  options={['Zone1', 'Zone2', 'Zone3', 'Zone4', 'Zone5', 'Zone6', 'Zone7', 'Zone8', 'Darwin', 'Cairns'].map(v => ({ value: v, label: v }))} />
+                <Select label="10. Install Timeline" value={installInfo.install_timeline || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, install_timeline: e.target.value }))}
+                  options={['Unconstrained', 'Rushed', 'Very Rushed'].map(v => ({ value: v, label: v }))} />
+                <Select label="11. DNSP" value={installInfo.dnsp_override || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dnsp_override: e.target.value }))}
+                  options={['No Match', 'Endeavour', 'Essential Energy', 'Ausgrid', 'Ausnet', 'Citi Power - Powercor', 'Jemena', 'United Energy', 'SAPN', 'TasNetworks', 'Power and Water Corporation', 'Evoenergy', 'Ergon', 'Energex', 'Horizon Power', 'Western Power'].map(v => ({ value: v, label: v }))} />
+                <Select label="12. Large/Small Team" value={installInfo.large_small_team || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, large_small_team: e.target.value }))}
+                  options={['Large', 'Small'].map(v => ({ value: v, label: v }))} />
+                <Select label="13. STC/LGC Split" value={installInfo.stc_lgc_split || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, stc_lgc_split: e.target.value }))}
                   options={['No', 'Yes'].map(v => ({ value: v, label: v }))} />
-                <Select label="Transformer" value={installInfo.transformer || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, transformer: e.target.value }))}
+                <Select label="14. Switchboard Mods" value={installInfo.switchboard_complexity || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, switchboard_complexity: e.target.value }))}
+                  options={['Appears to be Adequate', 'May Require Upgrade (Excluded from quote)', 'Requires extension/New cabinet'].map(v => ({ value: v, label: v }))} />
+                <Select label="15. Optimisers" value={installInfo.optimisers || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, optimisers: e.target.value }))}
+                  options={['Required', 'Not Required'].map(v => ({ value: v, label: v }))} />
+                <Select label="16. Transformer" value={installInfo.transformer || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, transformer: e.target.value }))}
                   options={['Not Required', 'Required'].map(v => ({ value: v, label: v }))} />
-                <Select label="Rollout" value={installInfo.rollout || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, rollout: e.target.value }))}
+                <Select label="17. Rollout" value={installInfo.rollout || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, rollout: e.target.value }))}
                   options={['No (1-2 sites)', 'Yes (3-5 sites)', 'Yes (5-20 sites)', 'Yes (20+ sites)'].map(v => ({ value: v, label: v }))} />
-                <Select label="Safety" value={installInfo.safety || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, safety: e.target.value }))}
-                  options={['Standard', 'Rigorous', 'Very Rigorous', 'No Match'].map(v => ({ value: v, label: v }))} />
-                <Select label="Optimisers" value={installInfo.optimisers || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, optimisers: e.target.value }))}
-                  options={[
-                    { value: 'No Match', label: 'No Match' },
-                    { value: 'SolarEdge', label: 'SolarEdge' },
-                    { value: 'Tigo', label: 'Tigo' },
-                    { value: 'Enphase', label: 'Enphase' }
-                  ]} />
+                <Select label="18. Safety" value={installInfo.safety || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, safety: e.target.value }))}
+                  options={['Standard', 'Rigorous', 'Very Rigorous'].map(v => ({ value: v, label: v }))} />
+                <Select label="19. MISC 1" value={installInfo.misc1 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, misc1: e.target.value }))}
+                  options={['None', 'DA', 'Mine Site', 'Tricky Cable Run', 'AFC Not In Scope', 'Building Certification', 'Carport (SCP)', 'Carport (Other)', 'Building Height >20m', 'GSES', 'Generator on site'].map(v => ({ value: v, label: v }))} />
+                <Select label="20. MISC 2" value={installInfo.misc2 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, misc2: e.target.value }))}
+                  options={['None', 'DA', 'Mine Site', 'Tricky Cable Run', 'AFC Not In Scope', 'Building Certification', 'Carport (SCP)', 'Carport (Other)', 'Building Height >20m', 'GSES', 'Generator on site'].map(v => ({ value: v, label: v }))} />
+                <Select label="21. Battery" value={installInfo.battery_pcm || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, battery_pcm: e.target.value }))}
+                  options={['None', 'Included'].map(v => ({ value: v, label: v }))} />
+                <Select label="22. HV Customer" value={installInfo.hv_customer_pcm || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, hv_customer_pcm: e.target.value }))}
+                  options={['No', 'Unknown', 'Yes'].map(v => ({ value: v, label: v }))} />
               </div>
             </div>
 

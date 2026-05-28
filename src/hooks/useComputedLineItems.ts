@@ -26,15 +26,18 @@ export function calculateMarkupSummary(
   complexityScope?: {
     client_cooperativeness?: string
     switchboard_complexity?: string
-    site_complexity?: string
-    site_complexity2?: string
+    misc1?: string
+    misc2?: string
     racking?: string
     racking2?: string
     system_complexity?: string
     builders?: string
-    consultants?: string
-    architects?: string
+    architects_consultants?: string
     ppa_funders?: string
+    location?: string
+    install_timeline?: string
+    dnsp_override?: string
+    large_small_team?: string
     stc_lgc_split?: string
     transformer?: string
     rollout?: string
@@ -44,6 +47,9 @@ export function calculateMarkupSummary(
     bess_kwh?: number
     hv_customer?: boolean
     has_optimisers?: boolean
+    optimisers?: string
+    battery_pcm?: string
+    hv_customer_pcm?: string
   }
 ): MarkupSummary {
   // If there is no system size and no items on the quote, return zero/empty baseline
@@ -81,7 +87,7 @@ export function calculateMarkupSummary(
   let engFactor = 1.0
   let pmFactor = 1.0
 
-  // Racking
+  // 1. Racking
   const racking = complexityScope?.racking || 'Base Tin Installation'
   const rackingLookups: Record<string, { eng: number; pm: number }> = {
     'Base Tin Installation': { eng: 1.0, pm: 1.0 },
@@ -92,13 +98,12 @@ export function calculateMarkupSummary(
     'Ballasted System': { eng: 1.3, pm: 1.4 },
     'Floating (ex. Anchors and Extras)': { eng: 1.5, pm: 1.5 },
     'Carpark': { eng: 1.25, pm: 1.3 },
-    'No Match': { eng: 1.0, pm: 1.0 },
   }
   const rackVals = rackingLookups[racking] || rackingLookups['Base Tin Installation']
   engFactor *= rackVals.eng
   pmFactor *= rackVals.pm
 
-  // Racking 2
+  // 2. Racking 2
   const racking2 = complexityScope?.racking2 || 'Flush Mounted'
   const racking2Lookups: Record<string, { eng: number; pm: number }> = {
     'Flush Mounted': { eng: 1.0, pm: 1.0 },
@@ -109,14 +114,13 @@ export function calculateMarkupSummary(
     'Klip Lock + Tilt Legs Addition': { eng: 1.0, pm: 1.0 },
     'Klip Lock Addition + Wind Zone C/D': { eng: 1.1, pm: 1.05 },
     'Tilt Legs + Wind Zone C/D Addition': { eng: 1.15, pm: 1.05 },
-    'Klip Lock + Tilt Legs Addition +  Wind Zone C/D Addition': { eng: 1.2, pm: 1.05 },
-    'No Match': { eng: 1.0, pm: 1.0 },
+    'Klip Lock + Tilt Legs Addition + Wind Zone C/D Addition': { eng: 1.2, pm: 1.05 },
   }
   const rack2Vals = racking2Lookups[racking2] || racking2Lookups['Flush Mounted']
   engFactor *= rack2Vals.eng
   pmFactor *= rack2Vals.pm
 
-  // System Complexity
+  // 3. System Complexity (System Type)
   const sysComplexity = complexityScope?.system_complexity || 'Standard'
   const sysLookups: Record<string, { eng: number; pm: number }> = {
     'Standard': { eng: 1.0, pm: 1.0 },
@@ -124,27 +128,25 @@ export function calculateMarkupSummary(
     'Multi Roof': { eng: 1.1, pm: 1.1 },
     'Large Scale Roof': { eng: 0.7, pm: 0.9 },
     'Ground mounted mechanical + electrical': { eng: 1.4, pm: 1.4 },
-    'No Match': { eng: 1.0, pm: 1.0 },
   }
   const sysVals = sysLookups[sysComplexity] || sysLookups['Standard']
   engFactor *= sysVals.eng
   pmFactor *= sysVals.pm
 
-  // Client co-operativeness
-  const coop = complexityScope?.client_cooperativeness || 'Very Co-operative'
+  // 4. Client co-operativeness
+  const coop = complexityScope?.client_cooperativeness || 'Average'
   const coopLookups: Record<string, { eng: number; pm: number }> = {
     'Very Co-operative': { eng: 0.9, pm: 0.9 },
     'Average': { eng: 1.0, pm: 1.0 },
     'Difficult': { eng: 1.2, pm: 1.3 },
     'Very Difficult': { eng: 1.3, pm: 1.3 },
     'CUB': { eng: 1.5, pm: 1.5 },
-    'No Match': { eng: 1.0, pm: 1.0 },
   }
-  const coopVals = coopLookups[coop] || coopLookups['Very Co-operative']
+  const coopVals = coopLookups[coop] || coopLookups['Average']
   engFactor *= coopVals.eng
   pmFactor *= coopVals.pm
 
-  // Builders
+  // 5. Builders
   const builders = complexityScope?.builders || 'Not Involved'
   const builderLookups: Record<string, { eng: number; pm: number }> = {
     'Heavily or Continuously Involved': { eng: 1.3, pm: 1.3 },
@@ -155,23 +157,17 @@ export function calculateMarkupSummary(
   engFactor *= bldVals.eng
   pmFactor *= bldVals.pm
 
-  // Consultants
-  const consultants = complexityScope?.consultants || 'Not Involved'
-  const consultantLookups: Record<string, { eng: number; pm: number }> = {
+  // 6 & 7. Architects/Consultants
+  const architectsConsultants = complexityScope?.architects_consultants || 'Not Involved'
+  const archConsLookups: Record<string, { eng: number; pm: number }> = {
     'Involved': { eng: 1.2, pm: 1.1 },
     'Not Involved': { eng: 1.0, pm: 1.0 },
   }
-  const consVals = consultantLookups[consultants] || consultantLookups['Not Involved']
-  engFactor *= consVals.eng
-  pmFactor *= consVals.pm
+  const archConsVals = archConsLookups[architectsConsultants] || archConsLookups['Not Involved']
+  engFactor *= archConsVals.eng
+  pmFactor *= archConsVals.pm
 
-  // Architects
-  const architects = complexityScope?.architects || 'Not Involved'
-  const archVals = consultantLookups[architects] || consultantLookups['Not Involved']
-  engFactor *= archVals.eng
-  pmFactor *= archVals.pm
-
-  // PPA Funders
+  // 8. PPA Funders
   const ppa = complexityScope?.ppa_funders || 'Not Involved'
   const ppaLookups: Record<string, { eng: number; pm: number }> = {
     'Not Involved': { eng: 1.0, pm: 1.0 },
@@ -182,8 +178,42 @@ export function calculateMarkupSummary(
   engFactor *= ppaVals.eng
   pmFactor *= ppaVals.pm
 
-  // DNSP Complexity
-  const dnspName = complexityScope?.dnsp || 'Ausgrid'
+  // 9. Location
+  const location = complexityScope?.location || 'Zone1'
+  const locationLookups: Record<string, { eng: number; pm: number }> = {
+    'Zone1': { eng: 1.0, pm: 1.0 },
+    'Zone2': { eng: 1.0, pm: 1.0 },
+    'Zone3': { eng: 1.0, pm: 1.0 },
+    'Zone4': { eng: 1.0, pm: 1.0 },
+    'Zone5': { eng: 1.0, pm: 1.0 },
+    'Zone6': { eng: 1.0, pm: 1.0 },
+    'Zone7': { eng: 1.0, pm: 1.0 },
+    'Zone8': { eng: 1.0, pm: 1.0 },
+    'Darwin': { eng: 1.0, pm: 1.0 },
+    'Cairns': { eng: 1.0, pm: 1.0 },
+  }
+  const locationVals = locationLookups[location] || locationLookups['Zone1']
+  engFactor *= locationVals.eng
+  pmFactor *= locationVals.pm
+
+  // 10. Install Timeline
+  const timeline = complexityScope?.install_timeline || 'Unconstrained'
+  const timelineLookups: Record<string, { eng: number; pm: number }> = {
+    'Unconstrained': { eng: 1.0, pm: 1.0 },
+    'Rushed': { eng: 1.0, pm: 1.0 },
+    'Very Rushed': { eng: 1.0, pm: 1.0 },
+  }
+  const timelineVals = timelineLookups[timeline] || timelineLookups['Unconstrained']
+  engFactor *= timelineVals.eng
+  pmFactor *= timelineVals.pm
+
+  // 11. DNSP
+  // Use dnsp_override if present, otherwise fallback to calculated dnsp
+  let dnspName = complexityScope?.dnsp_override || 'No Match'
+  if (dnspName === 'No Match' || !dnspName) {
+      dnspName = complexityScope?.dnsp || 'Ausgrid'
+  }
+  
   let dnspEng = 1.1
   let dnspPm = 1.0
   if (dnspName.toLowerCase().includes('endeavour')) {
@@ -198,50 +228,52 @@ export function calculateMarkupSummary(
   engFactor *= dnspEng
   pmFactor *= dnspPm
 
-  // Large/Small Team (Auto-computed from system size)
-  const isLargeTeam = resolvedKw > 200
-  const teamEng = isLargeTeam ? 1.2 : 0.85
-  const teamPm = isLargeTeam ? 1.1 : 0.9
-  engFactor *= teamEng
-  pmFactor *= teamPm
+  // 12. Large/Small Team
+  const team = complexityScope?.large_small_team || 'Small'
+  const teamLookups: Record<string, { eng: number; pm: number }> = {
+    'Large': { eng: 1.2, pm: 1.1 },
+    'Small': { eng: 0.85, pm: 0.9 },
+  }
+  const teamVals = teamLookups[team] || teamLookups['Small']
+  engFactor *= teamVals.eng
+  pmFactor *= teamVals.pm
 
-  // STC/LGC Split
+  // 13. STC/LGC Split
   const stcLgc = complexityScope?.stc_lgc_split || 'No'
   if (stcLgc === 'Yes') {
     engFactor *= 1.1
     pmFactor *= 1.1
   }
 
-  // Switchboard Connection
-  const sw = complexityScope?.switchboard_complexity || 'Not Involved'
+  // 14. Switchboard Mods
+  const sw = complexityScope?.switchboard_complexity || 'Appears to be Adequate'
   const swLookups: Record<string, { eng: number; pm: number }> = {
-    'Appears to be Adequate': { eng: 1.0, pm: 1.0 },
     'May Require Upgrade (Excluded from quote)': { eng: 1.1, pm: 1.0 },
+    'Appears to be Adequate': { eng: 1.0, pm: 1.0 },
     'Requires extension/New cabinet': { eng: 1.25, pm: 1.1 },
-    'Not Involved': { eng: 1.0, pm: 1.0 },
-    'Involved': { eng: 1.1, pm: 1.0 },
-    'Heavily or Continuously Involved': { eng: 1.25, pm: 1.1 },
-    'No Match': { eng: 1.0, pm: 1.0 },
   }
-  const swVals = swLookups[sw] || swLookups['Not Involved']
+  const swVals = swLookups[sw] || swLookups['Appears to be Adequate']
   engFactor *= swVals.eng
   pmFactor *= swVals.pm
 
-  // Optimisers
-  const hasOptimisers = complexityScope?.has_optimisers || complexityScope?.optimisers === 'Yes'
-  if (hasOptimisers) {
-    engFactor *= 1.2
-    pmFactor *= 1.1
+  // 15. Optimisers
+  const optimisers = complexityScope?.optimisers || 'Not Required'
+  const optimiserLookups: Record<string, { eng: number; pm: number }> = {
+    'Required': { eng: 1.2, pm: 1.1 },
+    'Not Required': { eng: 1.0, pm: 1.0 },
   }
+  const optVals = optimiserLookups[optimisers] || optimiserLookups['Not Required']
+  engFactor *= optVals.eng
+  pmFactor *= optVals.pm
 
-  // Transformer
+  // 16. Transformer
   const transformer = complexityScope?.transformer || 'Not Required'
   if (transformer === 'Required') {
     engFactor *= 1.3
     pmFactor *= 1.1
   }
 
-  // Rollout
+  // 17. Rollout
   const rollout = complexityScope?.rollout || 'No (1-2 sites)'
   const rolloutLookups: Record<string, { eng: number; pm: number }> = {
     'No (1-2 sites)': { eng: 1.0, pm: 1.0 },
@@ -253,22 +285,21 @@ export function calculateMarkupSummary(
   engFactor *= rolloutVals.eng
   pmFactor *= rolloutVals.pm
 
-  // Safety
+  // 18. Safety
   const safety = complexityScope?.safety || 'Standard'
   const safetyLookups: Record<string, { eng: number; pm: number }> = {
     'Standard': { eng: 1.0, pm: 1.0 },
     'Rigorous': { eng: 1.0, pm: 1.15 },
     'Very Rigorous': { eng: 1.1, pm: 1.3 },
-    'No Match': { eng: 1.0, pm: 1.0 },
   }
   const safetyVals = safetyLookups[safety] || safetyLookups['Standard']
   engFactor *= safetyVals.eng
   pmFactor *= safetyVals.pm
 
-  // MISC 1 & MISC 2 (Site Complexity)
-  const site1 = complexityScope?.site_complexity || 'None'
-  const site2 = complexityScope?.site_complexity2 || 'None'
-  const siteLookups: Record<string, { eng: number; pm: number }> = {
+  // 19 & 20. MISC 1 & MISC 2
+  const misc1 = complexityScope?.misc1 || 'None'
+  const misc2 = complexityScope?.misc2 || 'None'
+  const miscLookups: Record<string, { eng: number; pm: number }> = {
     'None': { eng: 1.0, pm: 1.0 },
     'DA': { eng: 1.1, pm: 1.1 },
     'Mine Site': { eng: 2.0, pm: 2.25 },
@@ -281,28 +312,39 @@ export function calculateMarkupSummary(
     'GSES': { eng: 0.4, pm: 1.2 },
     'Generator on site': { eng: 1.1, pm: 1.05 },
   }
-  const site1Vals = siteLookups[site1] || siteLookups['None']
-  const site2Vals = siteLookups[site2] || siteLookups['None']
-  engFactor *= site1Vals.eng * site2Vals.eng
-  pmFactor *= site1Vals.pm * site2Vals.pm
+  const misc1Vals = miscLookups[misc1] || miscLookups['None']
+  const misc2Vals = miscLookups[misc2] || miscLookups['None']
+  engFactor *= misc1Vals.eng * misc2Vals.eng
+  pmFactor *= misc1Vals.pm * misc2Vals.pm
 
-  // Battery Complexity
-  const bessKwh = complexityScope?.bess_kwh || 0
-  const hasBess = complexityScope?.has_bess || false
-  if (hasBess && bessKwh > 0 && resolvedKw > 0) {
-    const bessMultiplier = 1.2 + 0.4 * Math.pow(bessKwh / resolvedKw, 0.5)
-    engFactor *= bessMultiplier
-    pmFactor *= bessMultiplier
+  // 21. Battery
+  const battery = complexityScope?.battery_pcm || 'None'
+  if (battery === 'Included' && resolvedKw > 0) {
+    // Determine bess_kwh if manually provided, else default to some sensible value or use 0
+    const bessKwh = complexityScope?.bess_kwh || 0
+    if (bessKwh > 0) {
+      const bessMultiplier = 1.2 + 0.4 * Math.pow(bessKwh / resolvedKw, 0.5)
+      engFactor *= bessMultiplier
+      pmFactor *= bessMultiplier
+    } else {
+      // If no capacity specified, apply a minimum bump
+      engFactor *= 1.2
+      pmFactor *= 1.2
+    }
   }
 
-  // HV Customer
-  const isHv = complexityScope?.hv_customer || false
-  if (isHv) {
-    engFactor *= 1.15
-    pmFactor *= 1.1
+  // 22. HV Customer
+  const hvCust = complexityScope?.hv_customer_pcm || 'No'
+  const hvLookups: Record<string, { eng: number; pm: number }> = {
+    'No': { eng: 1.0, pm: 1.0 },
+    'Unknown': { eng: 1.02, pm: 1.02 },
+    'Yes': { eng: 1.15, pm: 1.1 },
   }
+  const hvVals = hvLookups[hvCust] || hvLookups['No']
+  engFactor *= hvVals.eng
+  pmFactor *= hvVals.pm
 
-  // Internal Scaling Factor (Flat 1.1 / 1.1)
+  // 23. Internal Scaling Factor (Flat 1.1 / 1.1)
   engFactor *= 1.1
   pmFactor *= 1.1
 
