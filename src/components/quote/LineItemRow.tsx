@@ -3,8 +3,7 @@ import { MoreVertical, Copy, Trash2, RotateCcw, AlertCircle, CheckCircle, Calcul
 import { clsx } from 'clsx'
 import type { ComputedLineItem, PartialFormulaScope, ModifierType, InclusionStatus } from '../../types/domain.types'
 import FormulaTooltip from './FormulaTooltip'
-import { validateFormula, evaluateFormula, buildScope } from '../../lib/formulaEngine'
-import { DEFAULT_SCOPE_VALUES } from '../../lib/constants'
+
 
 const INCLUSION_OPTIONS: { value: InclusionStatus; label: string }[] = [
   { value: 'included', label: 'Included' },
@@ -195,16 +194,15 @@ export default function LineItemRow({
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQtyStr(String(item.qty))
   }, [item.qty])
 
   const showDelta = comparisonTotal !== undefined
-  const delta = showDelta ? item.computed_total - comparisonTotal! : 0
   const hasModifier = item.modifier_type !== 'none' && item.modifier_value !== 0
   const isExcluded = !item.is_included
   const hasOptions = item.option_groups.length > 0
   const isFormulaOverridden = item.formula_override !== null
-  const optionDelta = item.computed_total - item.formula_total
 
   // Keys to exclude from spec display
   const EXCLUDED_KEYS = new Set(['created_at', 'updated_at', 'id', 'price_item_id', 'version_id'])

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo, Fragment } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Save, ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react'
+import { Save, ArrowLeft, ChevronDown, ChevronRight, Calculator, TrendingUp, Clock } from 'lucide-react'
 import { useQuoteEditorStore } from '../../stores/quoteEditorStore'
 import { usePriceItems } from '../../hooks/usePriceItems'
 import { usePriceVersions } from '../../hooks/usePriceVersions'
@@ -10,7 +10,7 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Spinner from '../../components/ui/Spinner'
-import type { InclusionStatus, QuoteLineItemState, ItemCategory, ComputedLineItem } from '../../types/domain.types'
+import type { InclusionStatus, QuoteLineItemState, ItemCategory, ComputedLineItem, PartialFormulaScope } from '../../types/domain.types'
 import { type QuoteInputs, type CategorySubtotal, type QuoteResult, type LineItem } from '../../lib/quoteEngine'
 import { saveQuoteData, updateQuoteData, getQuoteById } from '../../lib/quoteDbService'
 import { AUSTRALIAN_STATES, STC_ZONE_FACTORS } from '../../lib/constants'
@@ -18,10 +18,9 @@ import { extractNMIPrefix, resolveDNSP, inferStateFromDNSP, buildDNSPScope } fro
 import { usePriceItemOptions } from '../../hooks/usePriceItemOptions'
 import { useComputedLineItems, useQuoteTotals } from '../../hooks/useComputedLineItems'
 import { useDNSPRules } from '../../hooks/useDNSPRules'
-import { evaluateFormula, type PartialFormulaScope } from '../../lib/formulaEngine'
+import { evaluateFormula } from '../../lib/formulaEngine'
 import { InlineFormulaEditor } from '../../components/quote/InlineFormulaEditor'
 import LineItemRow from '../../components/quote/LineItemRow'
-import QuoteSummary from '../../components/quote/QuoteSummary'
 
 const EMPTY_ARRAY: any[] = []
 
@@ -127,7 +126,7 @@ export default function QuoteEditorPage() {
 
   const hasProject = installInfo.total_system_size_kw > 0 || totals.costSubtotal > 0
 
-  const [activeSummaryTab, setActiveSummaryTab] = useState<'quote' | 'markup' | 'forecast'>('quote')
+
 
   // Reactive Price Increase Forecast calculations
   const forecastSummary = useMemo(() => {
@@ -292,6 +291,7 @@ export default function QuoteEditorPage() {
       })
 
       setLineItems(mappedLineItems)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHasMappedItems(true)
     }
   }, [isNew, loadedDbItems, priceItems, hasMappedItems, setLineItems])
@@ -881,163 +881,155 @@ export default function QuoteEditorPage() {
           )}
         </div>
 
-        {/* RIGHT SIDE: Quote Summary with tabs */}
-        <div className="w-[300px] border-l border-slate-800 bg-slate-900 shrink-0 overflow-y-auto flex flex-col">
-          {/* Tab bar */}
-          <div className="flex border-b border-slate-800 shrink-0">
-            {(['quote', 'markup', 'forecast'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveSummaryTab(tab)}
-                className={`flex-1 py-2.5 text-xs font-medium capitalize transition-colors ${activeSummaryTab === tab
-                    ? 'text-white border-b-2 border-brand-500'
-                    : 'text-slate-500 hover:text-slate-300'
-                  }`}
-              >
-                {tab === 'quote' ? 'Quote' : tab === 'markup' ? 'Markup' : 'Forecast'}
-              </button>
-            ))}
-          </div>
-
-          <div className="p-4 flex-1">
-            {activeSummaryTab === 'quote' && (
-              <div className="space-y-2 text-sm">
-                <h3 className="text-sm font-medium text-slate-300 mb-3">Quote Summary</h3>
-                {/* Cost subtotal */}
+        {/* RIGHT SIDE: Quote Summary Cards */}
+        <div className="w-[320px] border-l border-slate-800 bg-slate-900/40 shrink-0 overflow-y-auto p-4 space-y-4">
+          
+          {/* Quote Summary Card */}
+          <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+              <Calculator className="w-4 h-4 text-brand-400" />
+              Quote Summary
+            </h3>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-slate-400 text-xs">Cost Subtotal</span>
+                <span className="text-slate-300 font-mono text-xs">
+                  {hasProject ? `$${totals.costSubtotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-slate-400 text-xs">Sales Subtotal</span>
+                <span className="text-slate-300 font-mono text-xs">
+                  {hasProject ? `$${totals.subtotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                </span>
+              </div>
+              {totals.rebateTotal !== 0 && (
                 <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
-                  <span className="text-slate-400">Cost Subtotal</span>
-                  <span className="text-slate-300 font-mono text-xs">
-                    {hasProject ? `$${totals.costSubtotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                  <span className="text-slate-400 text-xs">Rebates & Incentives</span>
+                  <span className="text-green-400 font-mono text-xs">
+                    {totals.rebateTotal < 0 ? '-' : ''}${Math.abs(totals.rebateTotal).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
-                {/* Sales subtotal */}
-                <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
-                  <span className="text-slate-400">Sales Subtotal</span>
-                  <span className="text-slate-300 font-mono text-xs">
-                    {hasProject ? `$${totals.subtotal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-                  </span>
-                </div>
-                {/* Rebates */}
-                {totals.rebateTotal !== 0 && (
-                  <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
-                    <span className="text-slate-400">Rebates & Incentives</span>
-                    <span className="text-green-400 font-mono text-xs">
-                      {totals.rebateTotal < 0 ? '-' : ''}${Math.abs(totals.rebateTotal).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+              )}
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-slate-300 text-xs font-medium">Net (ex GST)</span>
+                <span className="text-white font-mono font-medium text-xs">
+                  {hasProject ? `$${totals.netBeforeGST.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-slate-400 text-xs">GST (10%)</span>
+                <span className="text-slate-300 font-mono text-xs">
+                  {hasProject ? `$${totals.gst.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-3 bg-slate-800/80 -mx-4 px-4 rounded-b-xl shadow-inner mt-2 border-t border-slate-700/50">
+                <span className="text-sm font-semibold text-white">Total (inc GST)</span>
+                <span className="text-base font-bold font-mono text-emerald-400">
+                  {hasProject ? `$${totals.total.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                </span>
+              </div>
+              {installInfo.total_system_size_kw > 0 && (
+                <div className="mt-3 pt-3 border-t border-slate-800 space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">System size</span>
+                    <span className="text-slate-300 font-mono">{installInfo.total_system_size_kw} kWp</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-500">Price / kW (net ex GST)</span>
+                    <span className="text-slate-300 font-mono">
+                      ${installInfo.total_system_size_kw > 0 ? (totals.netBeforeGST / installInfo.total_system_size_kw).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—'}/kW
                     </span>
                   </div>
-                )}
-                <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
-                  <span className="text-slate-300 font-medium">Net (ex GST)</span>
-                  <span className="text-white font-mono font-medium text-xs">
-                    {hasProject ? `$${totals.netBeforeGST.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-                  </span>
                 </div>
-                <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
-                  <span className="text-slate-400">GST (10%)</span>
-                  <span className="text-slate-300 font-mono text-xs">
-                    {hasProject ? `$${totals.gst.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-3 bg-slate-800/80 -mx-4 px-4 rounded-lg shadow-inner mt-4 border border-slate-700/30">
-                  <span className="text-base font-semibold text-white">Total (inc GST)</span>
-                  <span className="text-lg font-bold font-mono text-emerald-400">
-                    {hasProject ? `$${totals.total.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-                  </span>
-                </div>
-                {installInfo.total_system_size_kw > 0 && (
-                  <div className="mt-3 pt-3 border-t border-slate-800 space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">System size</span>
-                      <span className="text-slate-300 font-mono">{installInfo.total_system_size_kw} kWp</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-slate-500">Price / kW (net ex GST)</span>
-                      <span className="text-slate-300 font-mono">
-                        ${installInfo.total_system_size_kw > 0 ? (totals.netBeforeGST / installInfo.total_system_size_kw).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—'}/kW
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+              )}
+            </div>
+          </div>
 
-            {activeSummaryTab === 'markup' && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium text-slate-300 mb-3">Markup Analysis</h3>
-                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
-                  <span className="text-sm text-slate-400">Proposed Markup</span>
-                  <span className="text-sm text-emerald-400 font-mono font-bold">
-                    {hasProject && totals.proposedMarkup > 0 ? `${((totals.proposedMarkup - 1) * 100).toFixed(1)}%` : '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
-                  <span className="text-sm text-slate-400">Target Markup</span>
-                  <span className="text-sm text-brand-400 font-mono font-bold">
-                    {hasProject && totals.targetMarkup > 0 ? `${((totals.targetMarkup - 1) * 100).toFixed(1)}%` : '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
-                  <span className="text-sm text-slate-400">Minimum Markup</span>
-                  <span className="text-sm text-amber-400 font-mono font-bold">
-                    {hasProject && totals.minimumMarkup > 0 ? `${((totals.minimumMarkup - 1) * 100).toFixed(1)}%` : '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
-                  <span className="text-sm text-slate-400">Mid Point</span>
-                  <span className="text-sm text-slate-300 font-mono">
-                    {hasProject && totals.midPoint > 0 ? `${((totals.midPoint - 1) * 100).toFixed(1)}%` : '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
-                  <span className="text-sm text-slate-400">Eng Hours</span>
-                  <span className="text-sm text-slate-300 font-mono">
-                    {hasProject ? `${totals.engHours.toFixed(1)} hrs` : '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
-                  <span className="text-sm text-slate-400">PM Hours</span>
-                  <span className="text-sm text-slate-300 font-mono">
-                    {hasProject ? `${totals.pmHours.toFixed(1)} hrs` : '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-3 bg-slate-800/80 -mx-4 px-4 rounded-lg shadow-inner mt-4 border border-slate-700/30">
-                  <span className="text-sm font-semibold text-white">Sales Total</span>
-                  <span className="text-base font-bold font-mono text-emerald-400">
-                    {hasProject ? `$${totals.netBeforeGST.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-                  </span>
-                </div>
+          {/* Markup Analysis Card */}
+          <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+              Markup Analysis
+            </h3>
+            <div className="space-y-1">
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-xs text-slate-400">Proposed Markup</span>
+                <span className="text-xs text-emerald-400 font-mono font-bold">
+                  {hasProject && totals.proposedMarkup > 0 ? `${((totals.proposedMarkup - 1) * 100).toFixed(1)}%` : '—'}
+                </span>
               </div>
-            )}
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-xs text-slate-400">Target Markup</span>
+                <span className="text-xs text-brand-400 font-mono font-bold">
+                  {hasProject && totals.targetMarkup > 0 ? `${((totals.targetMarkup - 1) * 100).toFixed(1)}%` : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-xs text-slate-400">Minimum Markup</span>
+                <span className="text-xs text-amber-400 font-mono font-bold">
+                  {hasProject && totals.minimumMarkup > 0 ? `${((totals.minimumMarkup - 1) * 100).toFixed(1)}%` : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-xs text-slate-400">Mid Point</span>
+                <span className="text-xs text-slate-300 font-mono">
+                  {hasProject && totals.midPoint > 0 ? `${((totals.midPoint - 1) * 100).toFixed(1)}%` : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-xs text-slate-400">Eng Hours</span>
+                <span className="text-xs text-slate-300 font-mono">
+                  {hasProject ? `${totals.engHours.toFixed(1)} hrs` : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-xs text-slate-400">PM Hours</span>
+                <span className="text-xs text-slate-300 font-mono">
+                  {hasProject ? `${totals.pmHours.toFixed(1)} hrs` : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2.5 bg-slate-800/80 -mx-4 px-4 rounded-b-xl shadow-inner mt-2 border-t border-slate-700/50">
+                <span className="text-xs font-semibold text-white">Sales Total</span>
+                <span className="text-sm font-bold font-mono text-emerald-400">
+                  {hasProject ? `$${totals.netBeforeGST.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                </span>
+              </div>
+            </div>
+          </div>
 
-            {activeSummaryTab === 'forecast' && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium text-slate-300 mb-3">Price Increase Forecast</h3>
-                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
-                  <span className="text-sm text-slate-400">Days to Start</span>
-                  <span className="text-sm text-slate-300 font-mono">
-                    {forecastSummary.decisionTimeDays.toFixed(0)} days
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
-                  <span className="text-sm text-slate-400">Today's Value</span>
-                  <span className="text-sm text-slate-300 font-mono">
-                    {hasProject ? `$${totals.netBeforeGST.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-800/60">
-                  <span className="text-sm text-slate-400">Value at Start Date</span>
-                  <span className="text-sm text-slate-300 font-mono">
-                    {hasProject ? `$${forecastSummary.systemValueAtStartDate.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-3 bg-slate-800/80 -mx-4 px-4 rounded-lg shadow-inner mt-4 border border-slate-700/30">
-                  <span className="text-sm font-semibold text-white">% Price Increase</span>
-                  <span className={`text-base font-bold font-mono ${forecastSummary.percentPriceIncrease < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                    {(forecastSummary.percentPriceIncrease * 100).toFixed(1)}%
-                  </span>
-                </div>
+          {/* Price Increase Forecast Card */}
+          <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-400" />
+              Price Forecast
+            </h3>
+            <div className="space-y-1">
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-xs text-slate-400">Days to Start</span>
+                <span className="text-xs text-slate-300 font-mono">
+                  {forecastSummary.decisionTimeDays.toFixed(0)} days
+                </span>
               </div>
-            )}
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-xs text-slate-400">Today's Value</span>
+                <span className="text-xs text-slate-300 font-mono">
+                  {hasProject ? `$${totals.netBeforeGST.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-slate-800/60">
+                <span className="text-xs text-slate-400">Value at Start Date</span>
+                <span className="text-xs text-slate-300 font-mono">
+                  {hasProject ? `$${forecastSummary.systemValueAtStartDate.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2.5 bg-slate-800/80 -mx-4 px-4 rounded-b-xl shadow-inner mt-2 border-t border-slate-700/50">
+                <span className="text-xs font-semibold text-white">% Price Increase</span>
+                <span className={`text-sm font-bold font-mono ${forecastSummary.percentPriceIncrease < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  {(forecastSummary.percentPriceIncrease * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
