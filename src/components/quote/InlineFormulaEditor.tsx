@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { RotateCcw, AlertCircle, CheckCircle } from 'lucide-react'
+import { parse } from 'mathjs'
 import type { ComputedLineItem, PartialFormulaScope } from '../../types/domain.types'
 import { validateFormula, evaluateFormula, buildScope } from '../../lib/formulaEngine'
 import { DEFAULT_SCOPE_VALUES } from '../../lib/constants'
@@ -20,12 +21,34 @@ export function InlineFormulaEditor({
   const validationError = draft.trim() ? validateFormula(draft) : null
 
   const preview = (() => {
-    if (!draft.trim() || validationError) return null
+    if (!draft.trim() || validationError) return { result: null, variables: [] }
     const fullScope = buildScope(
       { ...DEFAULT_SCOPE_VALUES, ...scope },
       { base_price: item.base_unit_price, qty: item.qty }
     )
-    return evaluateFormula(draft, fullScope)
+
+    const usedVars: Array<{ name: string, value: any }> = []
+    try {
+      const node = parse(draft)
+      const varNames = new Set<string>()
+      node.traverse((n: any) => {
+        if (n.isSymbolNode && !['abs', 'max', 'min', 'round', 'ceil', 'floor', 'sqrt', 'pow'].includes(n.name)) {
+          varNames.add(n.name)
+        }
+      })
+      varNames.forEach(name => {
+        if (fullScope[name as keyof typeof fullScope] !== undefined) {
+          usedVars.push({ name, value: fullScope[name as keyof typeof fullScope] })
+        }
+      })
+    } catch (e) {
+      // Ignore parse error, validationError handles it
+    }
+
+    return {
+      result: evaluateFormula(draft, fullScope),
+      variables: usedVars
+    }
   })()
 
   function handleSave() {
@@ -79,20 +102,34 @@ export function InlineFormulaEditor({
 
       {/* Validation + live preview */}
       {draft.trim() && (
-        <div className="flex items-center gap-1.5 text-xs">
-          {validationError
-            ? <><AlertCircle className="w-3 h-3 text-red-400" /><span className="text-red-400">{validationError}</span></>
-            : preview?.error
-              ? <><AlertCircle className="w-3 h-3 text-red-400" /><span className="text-red-400">{preview.error}</span></>
-              : preview !== null
-                ? <><CheckCircle className="w-3 h-3 text-green-400" />
-                  <span className="text-green-400">
-                    = ${preview.value.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                  <span className="text-slate-600">(live scope)</span>
-                </>
-                : null
-          }
+        <div className="flex flex-col gap-1.5 text-xs">
+          <div className="flex items-center gap-1.5">
+            {validationError
+              ? <><AlertCircle className="w-3 h-3 text-red-400" /><span className="text-red-400">{validationError}</span></>
+              : preview?.result?.error
+                ? <><AlertCircle className="w-3 h-3 text-red-400" /><span className="text-red-400">{preview.result.error}</span></>
+                : preview?.result !== null && preview?.result !== undefined
+                  ? <><CheckCircle className="w-3 h-3 text-green-400" />
+                    <span className="text-green-400">
+                      = ${preview.result.value.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-slate-600">(live scope)</span>
+                  </>
+                  : null
+            }
+          </div>
+          {preview?.variables && preview.variables.length > 0 && !validationError && !preview?.result?.error && (
+            <div className="text-[10px] text-slate-500 font-mono bg-slate-900/50 rounded px-2 py-1">
+              <span className="text-slate-600">Variables: </span>
+              {preview.variables.map((v, i) => (
+                <span key={v.name}>
+                  {i > 0 && <span className="text-slate-600 mx-1">•</span>}
+                  <span className="text-brand-300">{v.name}</span>
+                  <span className="text-slate-400">({typeof v.value === 'number' ? Number(v.value.toFixed(4)).toString() : String(v.value)})</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

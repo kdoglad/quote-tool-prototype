@@ -446,10 +446,29 @@ export function useComputedLineItems(
       panelQty = Math.floor(((scope.system_kw || 0) * 1000) / panelWattage)
     }
 
-    const enhancedScope: PartialFormulaScope = {
+    let invertersQty = 0
+    const inverterItems = priceItems.filter(i => i.type_value === 'inverters')
+    for (const inv of inverterItems) {
+      const storedList = storedByPriceItemId.get(inv.id)
+      if (storedList && storedList.length > 0) {
+        for (const stored of storedList) {
+          if (inclusionToBoolean(stored.inclusion_status)) {
+            const useCalculatedQty = stored.use_calculated_qty ?? false
+            const useManualQty = stored.use_manual_qty ?? !useCalculatedQty
+            if (useCalculatedQty) invertersQty += calculateQtyForLineItem(inv, scope)
+            if (useManualQty) invertersQty += stored.qty
+          }
+        }
+      } else {
+        invertersQty += calculateQtyForLineItem(inv, scope)
+      }
+    }
+
+    const enhancedScope: PartialFormulaScope & { inverters_qty?: number } = {
       ...scope,
       panel_wattage: panelWattage,
       panel_qty: panelQty,
+      inverters_qty: invertersQty,
     }
 
     const results: ComputedLineItem[] = []
@@ -584,17 +603,6 @@ function buildFromStored(
     ? computeLineItemTotal(effectiveItem, effectiveQty, scope, { type: inst.modifier_type, value: inst.modifier_value })
     : 0
 
-  if (isIncluded && (item.type_value === 'dc_twin_cabling' || item.subcategory === 'DC Cabling')) {
-    const isDirectBuried = scope.dc_cabling_type === 'Included - Direct Buried';
-    if (isDirectBuried) {
-      formulaTotal *= 1.36;
-    }
-    const systemKw = scope.system_kw || 0;
-    const trayM = scope.cable_tray_m || 110;
-    const trayFittingsCost = systemKw < 50 ? (trayM * 0.9) : (trayM * 5.7);
-    formulaTotal += trayFittingsCost * 1.15;
-  }
-
   const computedTotal = isIncluded
     ? applyOptionModifiers(formulaTotal, inst.selected_options, groups, optionById)
     : 0
@@ -664,17 +672,6 @@ function buildVirtualDefault(
   let formulaTotal = isIncluded
     ? computeLineItemTotal(item, effectiveQty, scope, { type: 'none', value: 0 })
     : 0
-
-  if (isIncluded && (item.type_value === 'dc_twin_cabling' || item.subcategory === 'DC Cabling')) {
-    const isDirectBuried = scope.dc_cabling_type === 'Included - Direct Buried';
-    if (isDirectBuried) {
-      formulaTotal *= 1.36;
-    }
-    const systemKw = scope.system_kw || 0;
-    const trayM = scope.cable_tray_m || 110;
-    const trayFittingsCost = systemKw < 50 ? (trayM * 0.9) : (trayM * 5.7);
-    formulaTotal += trayFittingsCost * 1.15;
-  }
 
   const computedTotal = isIncluded
     ? applyOptionModifiers(formulaTotal, {}, groups, optionById)

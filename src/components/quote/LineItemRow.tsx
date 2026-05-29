@@ -205,7 +205,7 @@ export default function LineItemRow({
   const isFormulaOverridden = item.formula_override !== null
 
   // Keys to exclude from spec display
-  const EXCLUDED_KEYS = new Set(['created_at', 'updated_at', 'id', 'price_item_id', 'version_id'])
+  const EXCLUDED_KEYS = new Set(['created_at', 'updated_at', 'id', 'price_item_id', 'version_id', 'item_id'])
 
   // Primary descriptor key per type_value (shown as the main tag)
   const MAIN_DESCRIPTOR_KEYS: Record<string, string[]> = {

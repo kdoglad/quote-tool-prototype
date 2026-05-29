@@ -92,9 +92,9 @@ export function evaluateFormula(formula: string, scope: FormulaScope): FormulaEv
  * Compute the final total for a line item including any modifier.
  */
 export function computeLineItemTotal(
-  item: Pick<PriceItem, 'formula' | 'base_price'>,
+  item: Pick<PriceItem, 'formula' | 'base_price' | 'category' | 'type_value' | 'subcategory'>,
   qty: number,
-  scope: PartialFormulaScope,
+  scope: PartialFormulaScope & { inverters_qty?: number },
   modifier: { type: ModifierType; value: number }
 ): number {
   const fullScope = buildScope(scope, { base_price: item.base_price, qty })
@@ -105,6 +105,37 @@ export function computeLineItemTotal(
     raw = result.value
   } else {
     raw = item.base_price * qty
+  }
+
+  // 1. Cabling
+  if (item.subcategory === 'AC Cabling' || item.type_value === 'ac_inverter_to_pvdb' || item.name?.toLowerCase().includes('inverter to pvdb')) {
+    // AC Cabling is Base Price * Length * Number of Inverters
+    const invertersCount = scope.inverters_qty ?? 1
+    raw = item.base_price * qty * invertersCount
+  } else if (item.subcategory === 'DC Cabling' || item.type_value === 'dc_twin_cabling') {
+    // DC Cabling is Base Price * (0.17 * SystemKw * Length) + Tray Fittings
+    const systemKw = scope.system_kw || 0
+    const length = qty
+    const dcCableCost = item.base_price * (0.17 * systemKw * length)
+    
+    // Add Tray fittings
+    const trayM = scope.cable_tray_m || 110
+    const trayFittingsCost = systemKw < 50 ? (trayM * 0.9) : (trayM * 5.7)
+    
+    // Check if Direct Buried
+    const isDirectBuried = scope.dc_cabling_type === 'Included - Direct Buried'
+    
+    if (isDirectBuried) {
+      raw = (dcCableCost * 1.36) + (trayFittingsCost * 1.15)
+    } else {
+      raw = dcCableCost + (trayFittingsCost * 1.15)
+    }
+  } else if (item.category === 'Installation' && item.type_value === 'install') {
+    // Already calculated correct qty as (systemKw * 1000)
+    raw = item.base_price * qty
+  } else if (item.category === 'Switch Gear' && item.name?.toLowerCase().includes('connection points')) {
+    // Number of connection points
+    raw = qty > 1 ? qty * 750 : 0
   }
 
   // Apply modifier
@@ -208,11 +239,13 @@ export function calculateQtyForLineItem(
     case 'cabling_addons': {
       return scope.cable_run_m || 50
     }
-    case 'install': {
+    case 'install':
+    case 'installation': {
       const unit = (item.unit || '').toLowerCase()
       if (unit.includes('kw')) return systemKw
+      if (unit.includes('w')) return systemKw * 1000
       if (unit.includes('panel')) return panelQty
-      return 1
+      return systemKw * 1000 // Default to per-watt pricing as seen in Excel
     }
     case 'safety': {
       const unit = (item.unit || '').toLowerCase()

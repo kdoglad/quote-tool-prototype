@@ -111,9 +111,6 @@ export default function QuoteEditorPage() {
   const priceItemIds = useMemo(() => priceItems.map((pi) => pi.id), [priceItems])
   const { data: optionData = { groups: [], options: [] } } = usePriceItemOptions(priceItemIds)
 
-  // Dynamic formula-evaluated items & totals
-  const computedItems = useComputedLineItems(priceItems, lineItems, scope, optionData)
-
   const complexityScope = useMemo(() => ({
     ...scope,
     client_cooperativeness: installInfo.client_cooperativeness,
@@ -137,7 +134,13 @@ export default function QuoteEditorPage() {
     optimisers: installInfo.optimisers,
     battery_pcm: installInfo.battery_pcm,
     hv_customer_pcm: installInfo.hv_customer_pcm,
+    manual_target_markup: installInfo.manual_target_markup,
+    manual_minimum_markup: installInfo.manual_minimum_markup,
+    manual_proposed_markup: installInfo.manual_proposed_markup,
   }), [scope, installInfo])
+
+  // Dynamic formula-evaluated items & totals
+  const computedItems = useComputedLineItems(priceItems, lineItems, complexityScope, optionData)
 
   const totals = useQuoteTotals(computedItems, installInfo.total_system_size_kw, complexityScope)
 
@@ -859,8 +862,8 @@ export default function QuoteEditorPage() {
                     </button>
 
                     {isExpanded && (
-                      <div className="bg-slate-900">
-                        <table className="w-full text-left border-collapse table-fixed">
+                      <div className="bg-slate-900 overflow-x-auto pb-2">
+                        <table className="w-full text-left border-collapse table-fixed min-w-[1200px]">
                           <thead>
                             <tr className="bg-slate-850 border-b border-slate-800 text-xs font-medium text-slate-400">
                               <th className="font-medium px-4 py-3 w-36 whitespace-nowrap">Status</th>
