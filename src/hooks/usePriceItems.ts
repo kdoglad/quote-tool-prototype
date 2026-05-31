@@ -97,12 +97,16 @@ function buildPriceItem(
     case 'prelim_general': case 'witness_injection': basePrice = n('price_total'); break;
     case 'grid_connection': basePrice = (n('total_network_fee') || 0) + (n('additional_cost') || 0) + (n('hv_site_variation') || 0) + (n('full_export_variation') || 0) + (n('preliminary_enquiry') || 0); break;
   }
+  let finalSubcategory = catalogData.subcategory || catConfig.label || null
+  if (finalSubcategory === 'Lifting Equipment') {
+    finalSubcategory = 'Lifting Equipment/Battery Install'
+  }
 
   return {
     id: catalogData.item_id,
     version_id: versionId,
     category: (catConfig.dbCategory || mapLegacyCategory(oldCat, oldType)) as ItemCategory,
-    subcategory: catalogData.subcategory || catConfig.label || null,
+    subcategory: finalSubcategory,
     code: catalogData.item_code,
     name: catalogData.item_name || specData?.item_name || `${catConfig.label} Item`,
     unit: catalogData.unit || specData?.unit || 'ea',

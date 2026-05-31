@@ -640,7 +640,7 @@ function buildFromStored(
     inclusion_status: inst.inclusion_status,
     is_included: isIncluded,
     category: item.category,
-    subcategory: item.subcategory,
+    subcategory: item.subcategory === 'Lifting Equipment' ? 'Lifting Equipment/Battery Install' : item.subcategory,
     code: item.code,
     name: item.name,
     unit: item.unit,
@@ -714,7 +714,7 @@ function buildVirtualDefault(
     inclusion_status: inclusionStatus,
     is_included: isIncluded,
     category: item.category,
-    subcategory: item.subcategory,
+    subcategory: item.subcategory === 'Lifting Equipment' ? 'Lifting Equipment/Battery Install' : item.subcategory,
     code: item.code,
     name: item.name,
     unit: item.unit,
@@ -816,7 +816,7 @@ function buildVirtualAcCabling(
   const construction = (isInv ? scope.ac_inverter_pvdb_construction : scope.ac_pvdb_msb_construction) || 'Single Core'
   const lengthM = (isInv ? scope.ac_inverter_pvdb_m : scope.ac_pvdb_msb_m) || 0
 
-  if (materialType.includes('Not Included') || lengthM <= 0) return null
+  const isIncluded = !materialType.includes('Not Included') && materialType !== 'No Match' && lengthM > 0
 
   const material = materialType.toLowerCase().includes('alu') ? 'Aluminium' : 'Copper'
   const acKw = (scope.system_kw || 100) 
@@ -835,7 +835,7 @@ function buildVirtualAcCabling(
     }
   }
 
-  const cost = basePrice * lengthM
+  const cost = isIncluded ? (basePrice * lengthM) : 0
   const systemKw = scope.system_kw || 0
   const cost_per_watt = systemKw > 0 ? (cost / (systemKw * 1000)) : 0
   const sales_rate = cost * 1.241452107343087
@@ -849,8 +849,8 @@ function buildVirtualAcCabling(
     is_custom: true,
     is_duplicate: false,
     is_removable: false,
-    inclusion_status: 'included',
-    is_included: true,
+    inclusion_status: isIncluded ? 'included' : 'not_required',
+    is_included: isIncluded,
     category: 'AC_Calculation',
     subcategory: 'AC Cabling',
     code: isInv ? 'CAB-AC-INV' : 'CAB-AC-MSB',

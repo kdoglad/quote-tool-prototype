@@ -146,7 +146,7 @@ export const CATALOG_CATEGORY_OPTIONS = [
 
   // Section F - Installation & Logistics
   { value: 'install', label: 'Installation Items', dbCategory: 'Install', dbType: 'Installation', specTable: 'install_specs' },
-  { value: 'lifting', label: 'Lifting Equipment', dbCategory: 'Install', dbType: 'Lifting', specTable: 'lifting_specs' },
+  { value: 'lifting', label: 'Lifting Equipment/Battery Install', dbCategory: 'Install', dbType: 'Lifting', specTable: 'lifting_specs' },
   { value: 'travel_accoms_freight', label: 'Travel/Accoms/Freight', dbCategory: 'Install', dbType: 'Logistics', specTable: 'travel_accoms_freight_specs' },
 
   // Section G - Safety & Compliance
