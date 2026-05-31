@@ -240,7 +240,7 @@ export default function CategoryTable({ typeValue, items, isDraft, onEdit, onDel
               {renderCells(item)}
               <td className="px-4 py-2.5 text-slate-500 text-xs">{item.unit || 'ea'}</td>
               <td className="px-4 py-2.5 text-right font-mono text-brand-400 text-xs">
-                $${(item.base_price || 0).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                ${(item.base_price || 0).toLocaleString('en-AU', { minimumFractionDigits: 2 })}
               </td>
               <td className="px-4 py-2.5">
                 {isDraft && (
