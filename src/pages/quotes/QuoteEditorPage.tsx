@@ -831,10 +831,9 @@ export default function QuoteEditorPage() {
                     <div className="flex flex-col gap-2">
                       <Select label="Type" value={installInfo.dc_cabling_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cabling_type: e.target.value }))}
                         options={[{ value: 'No Match', label: 'No Match' }, { value: 'Included - Standard Cable', label: 'Included - Standard Cable' }, { value: 'Included - Direct Buried', label: 'Included - Direct Buried' }, { value: 'Not Included', label: 'Not Included' }]} />
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2">
                         <Select label="Size" value={installInfo.dc_cable_size || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cable_size: e.target.value }))}
                           options={['4 mm', '6 mm', '10 mm', '16 mm'].map(s => ({ value: s, label: s }))} />
-                        <Input label="Length" type="number" step="0.1" value={installInfo.dc_cable_m || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cable_m: parseFloat(e.target.value) || 0 }))} suffix="m" />
                       </div>
                     </div>
                   </div>

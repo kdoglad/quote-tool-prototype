@@ -491,9 +491,11 @@ export default function LineItemRow({
       <td className="pr-3 py-2 w-24 align-top text-right pt-2">
         <div className="flex items-center justify-end gap-2">
           <span className="text-xs text-slate-400 font-mono">
-            {item.calculated_qty !== undefined ? item.calculated_qty.toLocaleString('en-AU', { maximumFractionDigits: 2 }) : '-'}
+            {(item.type_value === 'dc_twin_cabling' || item.type_value === 'cable_tray')
+              ? 'N/A'
+              : (item.calculated_qty !== undefined ? item.calculated_qty.toLocaleString('en-AU', { maximumFractionDigits: 2 }) : '-')}
           </span>
-          {(!item.id.startsWith('virtual-') && item.type_value !== 'dc_twin_cabling') && (
+          {(!item.id.startsWith('virtual-') && item.type_value !== 'dc_twin_cabling' && item.type_value !== 'cable_tray') && (
             <input
               type="checkbox"
               checked={item.use_calculated_qty ?? true}
@@ -508,35 +510,41 @@ export default function LineItemRow({
 
       {/* Qty (Manual) */}
       <td className="pr-3 py-2 w-20 align-top">
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          value={qtyStr}
-          onChange={(e) => {
-            const val = e.target.value;
-            setQtyStr(val);
-            const parsed = parseFloat(val);
-            if (!isNaN(parsed)) {
-              onQtyChange(parsed);
-              if (item.use_calculated_qty ?? true) {
-                onUseCalcQtyChange?.(false);
+        <div className="relative flex items-center">
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={qtyStr}
+            onChange={(e) => {
+              const val = e.target.value;
+              setQtyStr(val);
+              const parsed = parseFloat(val);
+              if (!isNaN(parsed)) {
+                onQtyChange(parsed);
+                if (item.use_calculated_qty ?? true) {
+                  onUseCalcQtyChange?.(false);
+                }
+              } else {
+                onQtyChange(0);
               }
-            } else {
-              onQtyChange(0);
-            }
-          }}
-          onBlur={() => {
-            if (qtyStr.trim() === '') {
-              setQtyStr(String(item.qty));
-            }
-          }}
-          disabled={readOnly || isExcluded}
-          className={clsx(
-            "w-full bg-slate-800 border rounded px-2 py-1 text-xs font-mono text-right focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-40",
-            (item.use_calculated_qty ?? true) ? "border-slate-700 text-slate-500" : "border-brand-500/50 text-white"
+            }}
+            onBlur={() => {
+              if (qtyStr.trim() === '') {
+                setQtyStr(String(item.qty));
+              }
+            }}
+            disabled={readOnly || isExcluded}
+            className={clsx(
+              "w-full bg-slate-800 border rounded py-1 text-xs font-mono text-right focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-40",
+              (item.type_value === 'dc_twin_cabling' || item.type_value === 'cable_tray') ? "pr-6 pl-2" : "px-2",
+              (item.use_calculated_qty ?? true) ? "border-slate-700 text-slate-500" : "border-brand-500/50 text-white"
+            )}
+          />
+          {(item.type_value === 'dc_twin_cabling' || item.type_value === 'cable_tray') && (
+            <span className="absolute right-2 text-xs text-slate-500 font-mono pointer-events-none">m</span>
           )}
-        />
+        </div>
       </td>
 
       {/* Cost */}
