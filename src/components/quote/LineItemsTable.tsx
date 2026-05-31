@@ -108,7 +108,7 @@ export default function LineItemsTable({
         const isExpanded = expandedCategories.has(cat)
         const catTotal = catItems
           .filter((i) => i.is_included)
-          .reduce((sum, i) => sum + i.computed_total, 0)
+          .reduce((sum, i) => sum + (i.sales_rate || 0), 0)
 
         return (
           <div key={cat} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
@@ -140,7 +140,7 @@ export default function LineItemsTable({
                   const isSubcatExpanded = expandedSubcategories.has(subcatKey)
                   const subcatTotal = subcatItems
                     .filter((i) => i.is_included)
-                    .reduce((sum, i) => sum + i.computed_total, 0)
+                    .reduce((sum, i) => sum + (i.sales_rate || 0), 0)
 
                   return (
                     <div key={subcatKey} className="border-b border-slate-800/50 last:border-b-0">

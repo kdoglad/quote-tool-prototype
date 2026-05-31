@@ -927,7 +927,7 @@ export default function QuoteEditorPage() {
 
                 const categoryTotal = allCategoryItems
                   .filter(item => item.is_included)
-                  .reduce((sum, item) => sum + item.computed_total, 0)
+                  .reduce((sum, item) => sum + (item.sales_rate || 0), 0)
 
                 return (
                   <div key={category.id} className="border border-slate-700 rounded-lg overflow-hidden">
@@ -970,7 +970,7 @@ export default function QuoteEditorPage() {
 
                               const subcatTotal = items
                                 .filter(item => item.is_included)
-                                .reduce((sum, item) => sum + item.computed_total, 0)
+                                .reduce((sum, item) => sum + (item.sales_rate || 0), 0)
 
                               return (
                                 <Fragment key={subcatKey}>
