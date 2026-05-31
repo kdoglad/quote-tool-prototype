@@ -24,6 +24,7 @@ export type ItemCategory =
   | 'Monitoring'
   | 'EV'
   | 'Rebates'
+  | 'AC_Calculation'
   | 'Custom'
 
 export type InstallType = 'rooftop' | 'ground' | 'carport'
@@ -57,6 +58,22 @@ export interface PriceVersion {
   published_by: string | null
   created_at: string
   created_by: string | null
+  ac_map?: AcMapRow[]
+}
+
+export interface AcMapRow {
+  size_mm2: number;
+  copper_single_core: number | null;
+  copper_4c_e: number | null;
+  alu_single_core: number | null;
+  alu_4c_e: number | null;
+}
+
+export interface AcMapSpecs {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  ac_map: AcMapRow[];
 }
 
 export interface PriceItem {
@@ -129,12 +146,18 @@ export interface FormulaScope {
   optimisers?: string
   // Cabling
   dc_cable_m: number
-  ac_cable_m: number
-  cable_run_m: number
+  dc_cable_size: string
+  ac_cable_m: number // legacy
+  cable_run_m: number // legacy
   dc_cabling_type: string
   ac_inverter_pvdb_type: string
+  ac_inverter_pvdb_construction: string
+  ac_inverter_pvdb_m: number
   ac_pvdb_msb_type: string
+  ac_pvdb_msb_construction: string
+  ac_pvdb_msb_m: number
   cable_tray_type: string
+  cable_tray_m: number
   trenching_type: string
   trench_m: number
   trench_type: TrenchType
@@ -400,10 +423,18 @@ export interface SiteDetailsFormData {
   internal_notes: string
   // Cabling type dropdowns
   dc_cabling_type?: string
+  dc_cable_size?: string
+  dc_cable_m?: number
   ac_inverter_pvdb_type?: string
+  ac_inverter_pvdb_construction?: string
+  ac_inverter_pvdb_m?: number
   ac_pvdb_msb_type?: string
+  ac_pvdb_msb_construction?: string
+  ac_pvdb_msb_m?: number
   cable_tray_type?: string
+  cable_tray_m?: number
   trenching_type?: string
+  trench_m?: number
   optimisers?: string
   // Manual Markups
   manual_target_markup?: number | null

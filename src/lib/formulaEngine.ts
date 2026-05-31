@@ -108,10 +108,13 @@ export function computeLineItemTotal(
   }
 
   // 1. Cabling
-  if (item.subcategory === 'AC Cabling' || item.type_value === 'ac_inverter_to_pvdb' || item.name?.toLowerCase().includes('inverter to pvdb')) {
-    // AC Cabling is Base Price * Length * Number of Inverters
+  if (item.type_value === 'ac_inverter_to_pvdb' || item.name?.toLowerCase().includes('inverter to pvdb')) {
+    // AC Cabling (Inverter to PVDB) is Base Price * Length * Number of Inverters
     const invertersCount = scope.inverters_qty ?? 1
     raw = item.base_price * qty * invertersCount
+  } else if (item.type_value === 'ac_pvdb_to_msb' || item.name?.toLowerCase().includes('pvdb to msb')) {
+    // AC Cabling (PVDB to MSB) is Base Price * Length (not multiplied by inverters)
+    raw = item.base_price * qty
   } else if (item.subcategory === 'DC Cabling' || item.type_value === 'dc_twin_cabling') {
     // DC Cabling is Base Price * (0.17 * SystemKw * Length) + Tray Fittings
     const systemKw = scope.system_kw || 0
@@ -230,11 +233,21 @@ export function calculateQtyForLineItem(
       const systemKva = scope.system_kva || (systemKw * 1.25)
       return Math.ceil(systemKva / kva)
     }
-    case 'ac_cabling': {
-      return scope.ac_cable_m || scope.cable_run_m || 50
+    case 'ac_cabling':
+    case 'ac_inverter_to_pvdb': {
+      return scope.ac_inverter_pvdb_m ?? scope.ac_cable_m ?? scope.cable_run_m ?? 5
+    }
+    case 'ac_pvdb_to_msb': {
+      return scope.ac_pvdb_msb_m ?? scope.ac_cable_m ?? scope.cable_run_m ?? 10
     }
     case 'dc_twin_cabling': {
-      return scope.dc_cable_m || scope.cable_run_m || 100
+      return scope.dc_cable_m ?? scope.cable_run_m ?? 50
+    }
+    case 'cable_tray': {
+      return scope.cable_tray_m ?? 110
+    }
+    case 'trenching': {
+      return scope.trench_m ?? 0
     }
     case 'cabling_addons': {
       return scope.cable_run_m || 50

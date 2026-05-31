@@ -34,7 +34,9 @@ const CATEGORY_STRUCTURE = [
   { id: 'Install', label: 'F. Installation & Logistics' },
   { id: 'Safety', label: 'G. Safety & Compliance' },
   { id: 'Monitoring', label: 'H. Monitoring & Warranty' },
-  { id: 'EV', label: 'I. EV Charging' },
+  { id: 'AC_Calculation', label: 'I. AC Calculation' },
+  { id: 'EV', label: 'J. EV Charging' },
+  { id: 'Rebates', label: 'K. Rebates & Incentives' },
 ]
 
 export default function QuoteEditorPage() {
@@ -51,6 +53,7 @@ export default function QuoteEditorPage() {
   } = useQuoteEditorStore()
 
   const { data: versions = EMPTY_ARRAY } = usePriceVersions()
+  const selectedVersion = useMemo(() => versions.find(v => v.id === selectedVersionId), [versions, selectedVersionId])
   const { data: priceItems = EMPTY_ARRAY, isLoading: itemsLoading } = usePriceItems(selectedVersionId ?? undefined)
   const saveQuote = useSaveQuote()
 
@@ -66,8 +69,10 @@ export default function QuoteEditorPage() {
     expected_commissioning_year: new Date().getFullYear(),
     expected_commissioning_month: 'January', existing_pv_kwp: 0, existing_pv_kva: 0,
     hv_customer: false, site_inspection_confirmed: false,
-    dc_cabling_type: 'No Match', ac_inverter_pvdb_type: 'No Match', ac_pvdb_msb_type: 'No Match',
-    cable_tray_type: 'No Match', trenching_type: 'No Match', optimisers: 'No Match',
+    dc_cabling_type: 'No Match', dc_cable_size: '4 mm', dc_cable_m: 50,
+    ac_inverter_pvdb_type: 'No Match', ac_inverter_pvdb_construction: 'Single Core', ac_inverter_pvdb_m: 5, 
+    ac_pvdb_msb_type: 'No Match', ac_pvdb_msb_construction: 'Single Core', ac_pvdb_msb_m: 10,
+    cable_tray_type: 'No Match', cable_tray_m: 110, trenching_type: 'No Match', trench_m: 0, optimisers: 'No Match',
     client_cooperativeness: 'Average',
     switchboard_complexity: 'Appears to be Adequate',
     misc1: 'None',
@@ -134,13 +139,22 @@ export default function QuoteEditorPage() {
     optimisers: installInfo.optimisers,
     battery_pcm: installInfo.battery_pcm,
     hv_customer_pcm: installInfo.hv_customer_pcm,
+    dc_cabling_type: installInfo.dc_cabling_type,
+    dc_cable_size: installInfo.dc_cable_size,
+    dc_cable_m: installInfo.dc_cable_m,
+    ac_inverter_pvdb_type: installInfo.ac_inverter_pvdb_type,
+    ac_inverter_pvdb_construction: installInfo.ac_inverter_pvdb_construction,
+    ac_inverter_pvdb_m: installInfo.ac_inverter_pvdb_m,
+    ac_pvdb_msb_type: installInfo.ac_pvdb_msb_type,
+    ac_pvdb_msb_construction: installInfo.ac_pvdb_msb_construction,
+    ac_pvdb_msb_m: installInfo.ac_pvdb_msb_m,
     manual_target_markup: installInfo.manual_target_markup,
     manual_minimum_markup: installInfo.manual_minimum_markup,
     manual_proposed_markup: installInfo.manual_proposed_markup,
   }), [scope, installInfo])
 
   // Dynamic formula-evaluated items & totals
-  const computedItems = useComputedLineItems(priceItems, lineItems, complexityScope, optionData)
+  const computedItems = useComputedLineItems(priceItems, lineItems, complexityScope, optionData, selectedVersion?.ac_map || [])
 
   const totals = useQuoteTotals(computedItems, installInfo.total_system_size_kw, complexityScope)
 
@@ -194,6 +208,19 @@ export default function QuoteEditorPage() {
         expected_commissioning_year: new Date().getFullYear(),
         expected_commissioning_month: 'January', existing_pv_kwp: 0, existing_pv_kva: 0,
         hv_customer: false, site_inspection_confirmed: false,
+        dc_cabling_type: 'No Match',
+        dc_cable_size: '4 mm',
+        dc_cable_m: 50,
+        ac_inverter_pvdb_type: 'No Match',
+        ac_inverter_pvdb_construction: 'Single Core',
+        ac_inverter_pvdb_m: 5,
+        ac_pvdb_msb_type: 'No Match',
+        ac_pvdb_msb_construction: 'Single Core',
+        ac_pvdb_msb_m: 10,
+        cable_tray_type: 'No Match',
+        cable_tray_m: 110,
+        trenching_type: 'No Match',
+        trench_m: 0,
       })
       return
     }
@@ -234,6 +261,19 @@ export default function QuoteEditorPage() {
           existing_pv_kva: quote.existing_solar_kw || 0,
           hv_customer: false,
           site_inspection_confirmed: false,
+          dc_cabling_type: cInfo.dc_cabling_type || 'No Match',
+          dc_cable_size: cInfo.dc_cable_size || '4 mm',
+          dc_cable_m: cInfo.dc_cable_m ?? 50,
+          ac_inverter_pvdb_type: cInfo.ac_inverter_pvdb_type || 'No Match',
+          ac_inverter_pvdb_construction: cInfo.ac_inverter_pvdb_construction || 'Single Core',
+          ac_inverter_pvdb_m: cInfo.ac_inverter_pvdb_m ?? 5,
+          ac_pvdb_msb_type: cInfo.ac_pvdb_msb_type || 'No Match',
+          ac_pvdb_msb_construction: cInfo.ac_pvdb_msb_construction || 'Single Core',
+          ac_pvdb_msb_m: cInfo.ac_pvdb_msb_m ?? 10,
+          cable_tray_type: cInfo.cable_tray_type || 'No Match',
+          cable_tray_m: cInfo.cable_tray_m ?? 110,
+          trenching_type: cInfo.trenching_type || 'No Match',
+          trench_m: cInfo.trench_m ?? 0,
         })
 
         setLoadedDbItems(items || [])
@@ -338,6 +378,19 @@ export default function QuoteEditorPage() {
       existing_solar_kw: installInfo.existing_pv_kwp || 0,
       stc_zone_factor: stcZoneFactor,
       stc_years: stcYears,
+      dc_cabling_type: installInfo.dc_cabling_type,
+      dc_cable_size: installInfo.dc_cable_size,
+      dc_cable_m: installInfo.dc_cable_m,
+      ac_inverter_pvdb_type: installInfo.ac_inverter_pvdb_type,
+      ac_inverter_pvdb_construction: installInfo.ac_inverter_pvdb_construction,
+      ac_inverter_pvdb_m: installInfo.ac_inverter_pvdb_m,
+      ac_pvdb_msb_type: installInfo.ac_pvdb_msb_type,
+      ac_pvdb_msb_construction: installInfo.ac_pvdb_msb_construction,
+      ac_pvdb_msb_m: installInfo.ac_pvdb_msb_m,
+      cable_tray_type: installInfo.cable_tray_type,
+      cable_tray_m: installInfo.cable_tray_m,
+      trenching_type: installInfo.trenching_type,
+      trench_m: installInfo.trench_m,
       ...dnspScope,
     }
 
@@ -355,6 +408,19 @@ export default function QuoteEditorPage() {
       site_state: activeState,
       site_postcode: installInfo.postcode,
       dnsp: resolvedDnsp ? resolvedDnsp.dnsp_name : '',
+      dc_cabling_type: installInfo.dc_cabling_type,
+      dc_cable_size: installInfo.dc_cable_size,
+      dc_cable_m: installInfo.dc_cable_m,
+      ac_inverter_pvdb_type: installInfo.ac_inverter_pvdb_type,
+      ac_inverter_pvdb_construction: installInfo.ac_inverter_pvdb_construction,
+      ac_inverter_pvdb_m: installInfo.ac_inverter_pvdb_m,
+      ac_pvdb_msb_type: installInfo.ac_pvdb_msb_type,
+      ac_pvdb_msb_construction: installInfo.ac_pvdb_msb_construction,
+      ac_pvdb_msb_m: installInfo.ac_pvdb_msb_m,
+      cable_tray_type: installInfo.cable_tray_type,
+      cable_tray_m: installInfo.cable_tray_m,
+      trenching_type: installInfo.trenching_type,
+      trench_m: installInfo.trench_m,
     }
 
     const currentStore = useQuoteEditorStore.getState()
@@ -759,35 +825,54 @@ export default function QuoteEditorPage() {
               </button>
               
               {isCablingExpanded && (
-                <div className="space-y-3">
-                  <Select label="DC Cabling Type" value={installInfo.dc_cabling_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cabling_type: e.target.value }))}
-                    options={[
-                      { value: 'No Match', label: 'No Match' },
-                      { value: 'Included - Standard Cable', label: 'Included - Standard Cable' },
-                      { value: 'Included - Direct Buried', label: 'Included - Direct Buried' },
-                      { value: 'Not Included', label: 'Not Included' }
-                    ]} />
-                  <Select label="AC Inverter to PVDB Type" value={installInfo.ac_inverter_pvdb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_inverter_pvdb_type: e.target.value }))}
-                    options={[
-                      { value: 'No Match', label: 'No Match' }, 
-                      { value: 'Included - Copper', label: 'Included - Copper' },
-                      { value: 'Included - Aluminium', label: 'Included - Aluminium' },
-                      { value: 'Not Included', label: 'Not Included' }
-                    ]} />
-                  <Select label="AC PVDB to MSB Type" value={installInfo.ac_pvdb_msb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_pvdb_msb_type: e.target.value }))}
-                    options={[
-                      { value: 'No Match', label: 'No Match' }, 
-                      { value: 'Included - Copper', label: 'Included - Copper' },
-                      { value: 'Included - Aluminium', label: 'Included - Aluminium' },
-                      { value: 'Not Included', label: 'Not Included' }
-                    ]} />
-                  <Select label="Cable Tray Type" value={installInfo.cable_tray_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, cable_tray_type: e.target.value }))}
-                    options={[
-                      { value: 'No Match', label: 'No Match' }, 
-                      { value: 'GAL', label: 'GAL' },
-                      { value: 'FRP', label: 'FRP' },
-                      { value: 'None', label: 'None' }
-                    ]} />
+                <div className="space-y-4">
+                  <div className="space-y-2 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                    <h4 className="text-xs font-semibold text-slate-300 uppercase">DC Cabling</h4>
+                    <div className="flex flex-col gap-2">
+                      <Select label="Type" value={installInfo.dc_cabling_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cabling_type: e.target.value }))}
+                        options={[{ value: 'No Match', label: 'No Match' }, { value: 'Included - Standard Cable', label: 'Included - Standard Cable' }, { value: 'Included - Direct Buried', label: 'Included - Direct Buried' }, { value: 'Not Included', label: 'Not Included' }]} />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Select label="Size" value={installInfo.dc_cable_size || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cable_size: e.target.value }))}
+                          options={['4 mm', '6 mm', '10 mm', '16 mm'].map(s => ({ value: s, label: s }))} />
+                        <Input label="Length" type="number" step="0.1" value={installInfo.dc_cable_m || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cable_m: parseFloat(e.target.value) || 0 }))} suffix="m" />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                    <h4 className="text-xs font-semibold text-slate-300 uppercase">AC Inverter to PVDB</h4>
+                    <div className="flex flex-col gap-2">
+                      <Select label="Type" value={installInfo.ac_inverter_pvdb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_inverter_pvdb_type: e.target.value }))}
+                        options={[{ value: 'No Match', label: 'No Match' }, { value: 'Included - Copper', label: 'Included - Copper' }, { value: 'Included - Aluminium', label: 'Included - Aluminium' }, { value: 'Not Included', label: 'Not Included' }]} />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Select label="Construction" value={installInfo.ac_inverter_pvdb_construction || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_inverter_pvdb_construction: e.target.value }))}
+                          options={['Single Core', '4C + E'].map(s => ({ value: s, label: s }))} />
+                        <Input label="Length" type="number" step="0.1" value={installInfo.ac_inverter_pvdb_m || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_inverter_pvdb_m: parseFloat(e.target.value) || 0 }))} suffix="m" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                    <h4 className="text-xs font-semibold text-slate-300 uppercase">AC PVDB to MSB</h4>
+                    <div className="flex flex-col gap-2">
+                      <Select label="Type" value={installInfo.ac_pvdb_msb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_pvdb_msb_type: e.target.value }))}
+                        options={[{ value: 'No Match', label: 'No Match' }, { value: 'Included - Copper', label: 'Included - Copper' }, { value: 'Included - Aluminium', label: 'Included - Aluminium' }, { value: 'Not Included', label: 'Not Included' }]} />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Select label="Construction" value={installInfo.ac_pvdb_msb_construction || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_pvdb_msb_construction: e.target.value }))}
+                          options={['Single Core', '4C + E'].map(s => ({ value: s, label: s }))} />
+                        <Input label="Length" type="number" step="0.1" value={installInfo.ac_pvdb_msb_m || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_pvdb_msb_m: parseFloat(e.target.value) || 0 }))} suffix="m" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                    <h4 className="text-xs font-semibold text-slate-300 uppercase">Cable Tray</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <Select label="Type" value={installInfo.cable_tray_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, cable_tray_type: e.target.value }))}
+                        options={[{ value: 'No Match', label: 'No Match' }, { value: 'GAL', label: 'GAL' }, { value: 'FRP', label: 'FRP' }, { value: 'None', label: 'None' }]} />
+                      <Input label="Length" type="number" step="1" value={installInfo.cable_tray_m || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, cable_tray_m: parseInt(e.target.value) || 0 }))} suffix="m" />
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

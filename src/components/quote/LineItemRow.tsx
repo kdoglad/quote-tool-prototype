@@ -493,14 +493,16 @@ export default function LineItemRow({
           <span className="text-xs text-slate-400 font-mono">
             {item.calculated_qty !== undefined ? item.calculated_qty.toLocaleString('en-AU', { maximumFractionDigits: 2 }) : '-'}
           </span>
-          <input
-            type="checkbox"
-            checked={item.use_calculated_qty ?? true}
+          {(!item.id.startsWith('virtual-') && item.type_value !== 'dc_twin_cabling') && (
+            <input
+              type="checkbox"
+              checked={item.use_calculated_qty ?? true}
             onChange={(e) => onUseCalcQtyChange?.(e.target.checked)}
             disabled={readOnly || isExcluded}
             className="w-3.5 h-3.5 rounded border-slate-600 bg-slate-800 text-brand-500 focus:ring-brand-500 cursor-pointer disabled:opacity-40"
-            title="Use calculated quantity instead of manual"
-          />
+              title="Use calculated quantity instead of manual"
+            />
+          )}
         </div>
       </td>
 

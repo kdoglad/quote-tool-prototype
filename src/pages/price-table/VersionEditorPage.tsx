@@ -12,6 +12,7 @@ import CategoryTable from '../../components/price-table/CategoryTable'
 import PublishDialog from '../../components/price-table/PublishDialog'
 import AddItemDialog from '../../components/price-table/AddItemDialog'
 import EditItemDialog from '../../components/price-table/EditItemDialog'
+import AcPricingMapEditor from '../../components/price-table/AcPricingMapEditor'
 import { useToast } from '../../components/ui/Toast'
 import { CATEGORIES } from '../../lib/constants'
 import type { PriceItem } from '../../types/domain.types'
@@ -257,6 +258,9 @@ export default function VersionEditorPage() {
             </div>
           )
         })}
+
+        {/* AC Pricing Map Editor */}
+        <AcPricingMapEditor isDraft={isDraft} />
       </div>
 
       {/* Edit item dialog */}

@@ -9,8 +9,9 @@ export const CATEGORIES: { value: ItemCategory; label: string; code: string }[] 
   { value: 'Install',       label: 'F. Installation & Logistics',     code: 'F' },
   { value: 'Safety',        label: 'G. Safety & Compliance',          code: 'G' },
   { value: 'Monitoring',    label: 'H. Monitoring & Warranty',        code: 'H' },
-  { value: 'EV',            label: 'I. EV Charging',                  code: 'I' },
-  { value: 'Rebates',       label: 'J. Rebates & Incentives',         code: 'J' },
+  { value: 'AC_Calculation',label: 'I. AC Calculation',                 code: 'I' },
+  { value: 'EV',            label: 'J. EV Charging',                  code: 'J' },
+  { value: 'Rebates',       label: 'K. Rebates & Incentives',         code: 'K' },
   { value: 'Custom',        label: 'Custom Items',                    code: 'Z' },
 ]
 
@@ -134,7 +135,6 @@ export const CATALOG_CATEGORY_OPTIONS = [
   { value: 'bessdb', label: 'BESS Distribution Boards', dbCategory: 'BESS', dbType: 'BESSDB', specTable: 'bessdb_specs' },
 
   // Section D - Cabling
-  { value: 'ac_cabling', label: 'AC Cabling', dbCategory: 'Cabling', dbType: 'AC Cabling', specTable: 'ac_cabling_specs' },
   { value: 'dc_twin_cabling', label: 'Twin DC Cabling', dbCategory: 'Cabling', dbType: 'Twin DC Cabling', specTable: 'dc_twin_cabling_specs' },
   { value: 'cabling_addons', label: 'Cabling Addons', dbCategory: 'Cabling', dbType: 'Cabling Addon', specTable: 'cabling_addons_specs' },
 

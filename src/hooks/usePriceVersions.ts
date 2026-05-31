@@ -36,6 +36,7 @@ export function usePriceVersions() {
           published_by: row.published_by,
           created_at: row.created_at,
           created_by: row.created_by,
+          ac_map: nd?.ac_map,
         }
       })
     },
@@ -67,6 +68,7 @@ export function useLatestPublishedVersion() {
         published_by: data.published_by,
         created_at: data.created_at,
         created_by: data.created_by,
+        ac_map: nd?.ac_map,
       }
     },
   })
@@ -98,6 +100,7 @@ export function usePriceVersion(id: string | undefined) {
         published_by: data.published_by,
         created_at: data.created_at,
         created_by: data.created_by,
+        ac_map: nd?.ac_map,
       }
     },
     enabled: !!id,
@@ -144,12 +147,24 @@ export function useCreateDraftVersion() {
         }
       }
 
+      // Fetch the latest ac_map
+      const { data: acMapRow } = await supabase
+        .from('ac_map_specs')
+        .select('ac_map')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
       const { data, error } = await supabase
         .from('audit_log')
         .insert({
           action: 'DRAFT',
           price_version: versionName,
-          new_data: { version_name: versionName, items: copiedItems },
+          new_data: { 
+            version_name: versionName, 
+            items: copiedItems,
+            ac_map: acMapRow?.ac_map || [] 
+          },
           notes: notes || null,
           created_by: userId,
         })

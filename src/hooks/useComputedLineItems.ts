@@ -7,8 +7,10 @@ import type {
   PriceItemOption,
   PartialFormulaScope,
   InclusionStatus,
+  AcMapRow,
 } from '../types/domain.types'
 import { computeLineItemTotal, calculateQtyForLineItem } from '../lib/formulaEngine'
+import { calculateAcCableSize } from '../lib/acCalculator'
 import type { GroupedOptions } from './usePriceItemOptions'
 
 export interface MarkupSummary {
@@ -396,7 +398,8 @@ export function useComputedLineItems(
   priceItems: PriceItem[],
   lineItems: QuoteLineItemState[],
   scope: PartialFormulaScope,
-  optionData: GroupedOptions = { groups: [], options: [] }
+  optionData: GroupedOptions = { groups: [], options: [] },
+  acMap: AcMapRow[] = []
 ): ComputedLineItem[] {
   return useMemo(() => {
     // Index stored line items by price_item_id
@@ -471,6 +474,8 @@ export function useComputedLineItems(
       inverters_qty: invertersQty,
     }
 
+    const dcPricingMap = priceItems.filter(i => i.type_value === 'dc_twin_cabling')
+
     const results: ComputedLineItem[] = []
 
     // ── Standard price items ──────────────────────────────────
@@ -486,12 +491,19 @@ export function useComputedLineItems(
           return a.sort_order - b.sort_order
         })
         for (const inst of sorted) {
-          results.push(buildFromStored(item, inst, groups, optionById, enhancedScope))
+          results.push(buildFromStored(item, inst, groups, optionById, enhancedScope, dcPricingMap))
         }
       } else {
-        results.push(buildVirtualDefault(item, groups, optionById, enhancedScope))
+        results.push(buildVirtualDefault(item, groups, optionById, enhancedScope, dcPricingMap))
       }
     }
+
+    // ── Virtual AC Line Items ─────────────────────────────
+    const invToPvdb = buildVirtualAcCabling('AC Inverter to PVDB Cabling', 'ac_inverter_to_pvdb', enhancedScope, acMap || [])
+    if (invToPvdb) results.push(invToPvdb)
+
+    const pvdbToMsb = buildVirtualAcCabling('AC PVDB to MSB Cabling', 'ac_pvdb_to_msb', enhancedScope, acMap || [])
+    if (pvdbToMsb) results.push(pvdbToMsb)
 
     // ── Custom items ──────────────────────────────────────────
     const sortedCustom = [...customLineItems].sort((a, b) => a.sort_order - b.sort_order)
@@ -532,7 +544,7 @@ export function useComputedLineItems(
     })
 
     return results
-  }, [priceItems, lineItems, scope, optionData])
+  }, [priceItems, lineItems, scope, optionData, acMap])
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -582,17 +594,21 @@ function buildFromStored(
   inst: QuoteLineItemState,
   groups: PriceItemOptionGroup[],
   optionById: Map<string, PriceItemOption>,
-  scope: PartialFormulaScope
+  scope: PartialFormulaScope,
+  dcPricingMap: PriceItem[]
 ): ComputedLineItem {
   const isIncluded = inclusionToBoolean(inst.inclusion_status)
   const isDuplicate = inst.instance_id !== item.id
   const activeFormula = inst.formula_override ?? item.formula
 
-  const effectiveItem = activeFormula !== item.formula
+  let effectiveItem = activeFormula !== item.formula
     ? { ...item, formula: activeFormula }
-    : item
+    : { ...item }
 
-  const calculatedQty = calculateQtyForLineItem(item, scope)
+  // Inject Dynamic Pricing and Units for Cabling
+  applyDynamicCabling(effectiveItem, scope, dcPricingMap)
+
+  const calculatedQty = calculateQtyForLineItem(effectiveItem, scope)
   const useCalculatedQty = inst.use_calculated_qty ?? false
   const useManualQty = inst.use_manual_qty ?? !useCalculatedQty
   let effectiveQty = 0;
@@ -659,12 +675,16 @@ function buildVirtualDefault(
   item: PriceItem,
   groups: PriceItemOptionGroup[],
   optionById: Map<string, PriceItemOption>,
-  scope: PartialFormulaScope
+  scope: PartialFormulaScope,
+  dcPricingMap: PriceItem[]
 ): ComputedLineItem {
   const inclusionStatus: InclusionStatus = 'not_required'
   const isIncluded = false
 
-  const calculatedQty = calculateQtyForLineItem(item, scope)
+  const effectiveItem = { ...item }
+  applyDynamicCabling(effectiveItem, scope, dcPricingMap)
+
+  const calculatedQty = calculateQtyForLineItem(effectiveItem, scope)
   const useCalculatedQty = false
   const useManualQty = true
   const effectiveQty = useCalculatedQty ? calculatedQty : 1
@@ -782,6 +802,102 @@ function buildCustomItem(li: QuoteLineItemState, scope: PartialFormulaScope): Co
     cost_per_watt,
     sales_rate,
     sale_per_watt,
+  }
+}
+
+function buildVirtualAcCabling(
+  name: string,
+  typeValue: string,
+  scope: PartialFormulaScope,
+  acMap: AcMapRow[]
+): ComputedLineItem | null {
+  const isInv = typeValue === 'ac_inverter_to_pvdb'
+  const materialType = (isInv ? scope.ac_inverter_pvdb_type : scope.ac_pvdb_msb_type) || 'Included - Copper'
+  const construction = (isInv ? scope.ac_inverter_pvdb_construction : scope.ac_pvdb_msb_construction) || 'Single Core'
+  const lengthM = (isInv ? scope.ac_inverter_pvdb_m : scope.ac_pvdb_msb_m) || 0
+
+  if (materialType.includes('Not Included') || lengthM <= 0) return null
+
+  const material = materialType.toLowerCase().includes('alu') ? 'Aluminium' : 'Copper'
+  const acKw = (scope.system_kw || 100) 
+  const size = calculateAcCableSize(acKw, lengthM, material)
+
+  const mapRow = acMap.find(row => row.size_mm2 == size)
+  let basePrice = 0
+  if (mapRow) {
+    const is4C = construction.includes('4C')
+    const price = is4C
+      ? (material === 'Copper' ? mapRow.copper_4c_e : mapRow.alu_4c_e)
+      : (material === 'Copper' ? mapRow.copper_single_core : mapRow.alu_single_core)
+    
+    if (price !== null && !isNaN(price)) {
+      basePrice = price
+    }
+  }
+
+  const cost = basePrice * lengthM
+  const systemKw = scope.system_kw || 0
+  const cost_per_watt = systemKw > 0 ? (cost / (systemKw * 1000)) : 0
+  const sales_rate = cost * 1.241452107343087
+  const sale_per_watt = cost_per_watt * 1.241452107343087
+
+  return {
+    id: `virtual-${typeValue}`,
+    instance_id: `virtual-${typeValue}`,
+    quote_id: '',
+    price_item_id: null,
+    is_custom: true,
+    is_duplicate: false,
+    is_removable: false,
+    inclusion_status: 'included',
+    is_included: true,
+    category: 'AC_Calculation',
+    subcategory: 'AC Cabling',
+    code: isInv ? 'CAB-AC-INV' : 'CAB-AC-MSB',
+    name: `${name} - ${size} mm (${material})`,
+    unit: `${size} mm`,
+    qty: lengthM,
+    manual_qty: lengthM,
+    calculated_qty: parseFloat(size) || 0,
+    use_calculated_qty: false,
+    use_manual_qty: true,
+    base_unit_price: basePrice,
+    formula: null,
+    default_formula: null,
+    formula_override: null,
+    active_formula: null,
+    modifier_type: 'none',
+    modifier_value: 0,
+    modifier_note: null,
+    computed_total: cost,
+    formula_total: cost,
+    option_groups: [],
+    selected_options: {},
+    sort_order: isInv ? 40 : 41,
+    cost,
+    cost_per_watt,
+    sales_rate,
+    sale_per_watt,
+  }
+}
+
+function applyDynamicCabling(
+  effectiveItem: PriceItem,
+  scope: PartialFormulaScope,
+  dcPricingMap: PriceItem[]
+) {
+  if (effectiveItem.type_value === 'dc_twin_cabling' || effectiveItem.subcategory === 'DC Cabling') {
+    const dcSize = scope.dc_cable_size || '4 mm'
+    const cleanSize = dcSize.replace('mm', '').trim()
+    effectiveItem.unit = `${cleanSize} mm`
+    
+    const mapRow = dcPricingMap.find(row => row.specData?.size_twin_dc_cable_mm == cleanSize || row.specData?.dc_cabling_name === dcSize)
+    if (mapRow) {
+      const price = parseFloat(mapRow.specData?.twin_dc_cable_price_per_mm)
+      if (!isNaN(price)) {
+        effectiveItem.base_price = price
+      }
+    }
   }
 }
 
