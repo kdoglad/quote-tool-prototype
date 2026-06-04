@@ -3,6 +3,7 @@ import { MoreVertical, Copy, Trash2, RotateCcw, AlertCircle, CheckCircle, Calcul
 import { clsx } from 'clsx'
 import type { ComputedLineItem, PartialFormulaScope, ModifierType, InclusionStatus } from '../../types/domain.types'
 import FormulaTooltip from './FormulaTooltip'
+import { getFallbackCostFormulaString, getFallbackQtyFormulaString } from '../../lib/formulaEngine'
 
 
 const INCLUSION_OPTIONS: { value: InclusionStatus; label: string }[] = [
@@ -189,6 +190,7 @@ export default function LineItemRow({
 }: LineItemRowProps & { onUseCalcQtyChange?: (val: boolean) => void }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [formulaOpen, setFormulaOpen] = useState(false)
+  const [qtyFormulaOpen, setQtyFormulaOpen] = useState(false)
   const [descOpen, setDescOpen] = useState(false)
   const [qtyStr, setQtyStr] = useState(String(item.qty))
   const menuRef = useRef<HTMLDivElement>(null)
@@ -334,40 +336,9 @@ export default function LineItemRow({
             {item.is_custom && (
               <span className="text-[10px] leading-none text-amber-500 bg-amber-900/30 px-1 py-1 rounded text-center">custom</span>
             )}
-            {/* Formula toggle button */}
-            {!readOnly && (
-              <button
-                onClick={() => setFormulaOpen((v) => !v)}
-                title={isFormulaOverridden ? 'Formula overridden for this quote — click to edit' : 'Edit formula for this quote'}
-                className={clsx(
-                  'relative flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200',
-                  'border border-slate-700/50 shadow-sm hover:scale-105 hover:shadow-md shrink-0',
-                  formulaOpen
-                    ? 'bg-brand-600 border-brand-500 text-white shadow-brand-900/20'
-                    : isFormulaOverridden
-                      ? 'bg-amber-900/40 border-amber-500/50 text-amber-400 hover:bg-amber-800/60 hover:border-amber-500'
-                      : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 hover:border-slate-600'
-                )}
-              >
-                <span className="font-serif italic text-[11px] leading-none font-bold">fx</span>
-                {isFormulaOverridden && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500"></span>}
-              </button>
-            )}
             <FormulaTooltip item={item} scope={scope} />
           </div>
         </div>
-
-        {/* Inline formula editor popup */}
-        {formulaOpen && !readOnly && (
-          <div className="absolute left-3 top-[calc(100%-4px)] z-50 min-w-[300px]">
-            <InlineFormulaEditor
-              item={item}
-              scope={scope}
-              onSave={onFormulaOverride}
-              onClose={() => setFormulaOpen(false)}
-            />
-          </div>
-        )}
       </td>
 
       {/* Code */}
@@ -488,8 +459,23 @@ export default function LineItemRow({
 
 
       {/* Calc Qty */}
-      <td className="pr-3 py-2 w-24 align-top text-right pt-2">
+      <td className="pr-3 py-2 w-24 align-top text-right pt-2 relative">
         <div className="flex items-center justify-end gap-2">
+          {((!item.id.startsWith('virtual-') && item.type_value !== 'dc_twin_cabling' && item.type_value !== 'cable_tray' && !item.is_custom) || item.id.startsWith('virtual-ac_')) && (
+            <button
+              onClick={() => setQtyFormulaOpen((v) => !v)}
+              title="View Calc Qty logic"
+              className={clsx(
+                'relative flex items-center justify-center w-5 h-5 rounded-full transition-all duration-200',
+                'border border-slate-700/50 shadow-sm hover:scale-105 hover:shadow-md shrink-0',
+                qtyFormulaOpen
+                  ? 'bg-brand-600 border-brand-500 text-white shadow-brand-900/20'
+                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 hover:border-slate-600'
+              )}
+            >
+              <span className="font-serif italic text-[9px] leading-none font-bold">fx</span>
+            </button>
+          )}
           <span className="text-xs text-slate-400 font-mono">
             {(item.type_value === 'dc_twin_cabling' || item.type_value === 'cable_tray')
               ? 'N/A'
@@ -506,6 +492,19 @@ export default function LineItemRow({
             />
           )}
         </div>
+        {qtyFormulaOpen && !readOnly && (
+          <div className="absolute right-0 top-[calc(100%-4px)] z-50">
+            <InlineFormulaEditor
+              item={item}
+              scope={scope}
+              onSave={() => {}} // Read-only, no save action
+              onClose={() => setQtyFormulaOpen(false)}
+              isReadOnly={true}
+              title="Quantity Formula (Preview)"
+              defaultPlaceholder={getFallbackQtyFormulaString(item)}
+            />
+          </div>
+        )}
       </td>
 
       {/* Qty (Manual) */}
@@ -548,8 +547,42 @@ export default function LineItemRow({
       </td>
 
       {/* Cost */}
-      <td className="pr-3 py-2 text-right font-mono text-xs w-24 align-top pt-2.5 text-slate-400">
-        {item.is_included ? `$${(item.computed_total || 0).toLocaleString('en-AU', { minimumFractionDigits: 2 })}` : '—'}
+      <td className="pr-3 py-2 text-right font-mono text-xs w-24 align-top pt-2 relative">
+        <div className="flex items-center justify-end gap-2">
+          {!readOnly && (
+            <button
+              onClick={() => setFormulaOpen((v) => !v)}
+              title={isFormulaOverridden ? 'Formula overridden for this quote — click to edit' : 'Edit formula for this quote'}
+              className={clsx(
+                'relative flex items-center justify-center w-5 h-5 rounded-full transition-all duration-200',
+                'border border-slate-700/50 shadow-sm hover:scale-105 hover:shadow-md shrink-0',
+                formulaOpen
+                  ? 'bg-brand-600 border-brand-500 text-white shadow-brand-900/20'
+                  : isFormulaOverridden
+                    ? 'bg-amber-900/40 border-amber-500/50 text-amber-400 hover:bg-amber-800/60 hover:border-amber-500'
+                    : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 hover:border-slate-600'
+              )}
+            >
+              <span className="font-serif italic text-[9px] leading-none font-bold">fx</span>
+              {isFormulaOverridden && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-500"></span>}
+            </button>
+          )}
+          <span className="text-slate-400 pt-0.5">
+            {item.is_included ? `$${(item.computed_total || 0).toLocaleString('en-AU', { minimumFractionDigits: 2 })}` : '—'}
+          </span>
+        </div>
+        {formulaOpen && !readOnly && (
+          <div className="absolute right-0 top-[calc(100%-4px)] z-50">
+            <InlineFormulaEditor
+              item={item}
+              scope={scope}
+              onSave={onFormulaOverride}
+              onClose={() => setFormulaOpen(false)}
+              title="Cost Formula"
+              defaultPlaceholder={getFallbackCostFormulaString(item)}
+            />
+          </div>
+        )}
       </td>
 
       {/* $/W Cost */}

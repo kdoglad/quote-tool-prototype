@@ -10,11 +10,17 @@ export function InlineFormulaEditor({
   scope,
   onSave,
   onClose,
+  isReadOnly = false,
+  title = "Formula",
+  defaultPlaceholder = "e.g. base_price * system_kw * qty"
 }: {
   item: ComputedLineItem
   scope: PartialFormulaScope
   onSave: (formula: string | null) => void
   onClose: () => void
+  isReadOnly?: boolean
+  title?: string
+  defaultPlaceholder?: string
 }) {
   const [draft, setDraft] = useState(item.formula_override ?? item.default_formula ?? '')
   const isOverridden = item.formula_override !== null
@@ -59,10 +65,10 @@ export function InlineFormulaEditor({
   }
 
   return (
-    <div className="mt-2 bg-slate-800/80 border border-slate-700 rounded-lg p-3 space-y-2">
+    <div className="mt-2 bg-slate-800/80 border border-slate-700 rounded-lg p-3 space-y-2 min-w-[300px]">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-medium text-slate-400">Formula</span>
-        {isOverridden && (
+        <span className="text-xs font-medium text-slate-400">{title}</span>
+        {isOverridden && !isReadOnly && (
           <button
             onClick={() => { onSave(null); onClose() }}
             className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors"
@@ -91,13 +97,14 @@ export function InlineFormulaEditor({
       <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        rows={2}
-        placeholder="e.g. base_price * system_kw * qty"
+        rows={Math.max(2, Math.min(5, (draft || defaultPlaceholder).split('\n').length))}
+        placeholder={defaultPlaceholder}
+        disabled={isReadOnly}
         className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white
-                   font-mono placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-brand-500
-                   resize-none"
+                   font-mono placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-brand-500
+                   resize-none disabled:opacity-70 disabled:cursor-not-allowed"
         spellCheck={false}
-        autoFocus
+        autoFocus={!isReadOnly}
       />
 
       {/* Validation + live preview */}
@@ -136,18 +143,20 @@ export function InlineFormulaEditor({
       <div className="flex gap-2 pt-1">
         <button
           onClick={handleSave}
-          disabled={!!validationError}
+          disabled={!!validationError || isReadOnly}
           className="text-xs bg-brand-700 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed
                      text-white rounded px-2.5 py-1 transition-colors"
         >
-          Apply
+          {isReadOnly ? 'Close' : 'Apply'}
         </button>
-        <button
-          onClick={onClose}
-          className="text-xs text-slate-500 hover:text-slate-300 transition-colors px-2 py-1"
-        >
-          Cancel
-        </button>
+        {!isReadOnly && (
+          <button
+            onClick={onClose}
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors px-2 py-1"
+          >
+            Cancel
+          </button>
+        )}
       </div>
     </div>
   )
