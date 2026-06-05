@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Plus, Send, ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Send, ArrowLeft, ChevronDown, ChevronRight, Download } from 'lucide-react'
 import { usePriceVersion } from '../../hooks/usePriceVersions'
 import { usePriceItems, useUpdatePriceItem } from '../../hooks/usePriceItems'
 import Button from '../../components/ui/Button'
@@ -15,6 +15,7 @@ import EditItemDialog from '../../components/price-table/EditItemDialog'
 import AcPricingMapEditor from '../../components/price-table/AcPricingMapEditor'
 import { useToast } from '../../components/ui/Toast'
 import { CATEGORIES } from '../../lib/constants'
+import { exportExcelTemplate } from '../../lib/exportExcelTemplate'
 import type { PriceItem } from '../../types/domain.types'
 
 import { supabase } from '../../lib/supabase'
@@ -38,8 +39,32 @@ export default function VersionEditorPage() {
   const [editingItem, setEditingItem] = useState<PriceItem | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showPublishDialog, setShowPublishDialog] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   const isDraft = version?.is_draft ?? false
+
+  async function handleDownloadTemplate() {
+    setIsDownloading(true)
+    try {
+      const { data: vRow, error: fetchErr } = await supabase
+        .from('audit_log')
+        .select('new_data')
+        .eq('audit_id', id)
+        .single()
+      
+      if (fetchErr) throw fetchErr
+
+      const nd = vRow?.new_data || {}
+      exportExcelTemplate(version?.version_name || 'Draft', nd)
+      
+      addToast('success', 'Template downloaded successfully.')
+    } catch (err) {
+      addToast('error', 'Failed to generate template.')
+      console.error(err)
+    } finally {
+      setIsDownloading(false)
+    }
+  }
 
   function toggleCategory(cat: string) {
     setExpandedCategories((prev) => {
@@ -176,6 +201,15 @@ export default function VersionEditorPage() {
               onClick={() => setShowAddDialog(true)}
             >
               Add Item
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={isDownloading ? <Spinner className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
+              onClick={handleDownloadTemplate}
+              disabled={isDownloading}
+            >
+              Download Template
             </Button>
             <Button
               variant="primary"
