@@ -1,27 +1,27 @@
 import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronRight, Save } from 'lucide-react'
-import { useAcMapSpecs, useUpdateAcMapSpecs } from '../../hooks/useAcMapSpecs'
 import Button from '../ui/Button'
 import { useToast } from '../ui/Toast'
 import type { AcMapRow } from '../../types/domain.types'
 
 interface AcPricingMapEditorProps {
   isDraft: boolean
+  acMap: AcMapRow[]
+  onSave?: (newMap: AcMapRow[]) => Promise<void>
 }
 
-export default function AcPricingMapEditor({ isDraft }: AcPricingMapEditorProps) {
+export default function AcPricingMapEditor({ isDraft, acMap, onSave }: AcPricingMapEditorProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const { data: currentSpecs, isLoading } = useAcMapSpecs()
-  const { mutateAsync: saveSpecs, isPending: saving } = useUpdateAcMapSpecs()
+  const [saving, setSaving] = useState(false)
   const { addToast } = useToast()
 
   const [localMap, setLocalMap] = useState<AcMapRow[]>([])
 
   useEffect(() => {
-    if (currentSpecs?.ac_map) {
-      setLocalMap(currentSpecs.ac_map)
+    if (acMap) {
+      setLocalMap(acMap)
     }
-  }, [currentSpecs])
+  }, [acMap])
 
   const handleUpdate = (index: number, field: keyof AcMapRow, value: string) => {
     const newMap = [...localMap]
@@ -31,11 +31,15 @@ export default function AcPricingMapEditor({ isDraft }: AcPricingMapEditorProps)
   }
 
   const handleSave = async () => {
+    if (!onSave) return
+    setSaving(true)
     try {
-      await saveSpecs(localMap)
+      await onSave(localMap)
       addToast('success', 'AC Map updated successfully.')
     } catch (err: any) {
       addToast('error', `Failed to update AC Map: ${err.message}`)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -59,12 +63,17 @@ export default function AcPricingMapEditor({ isDraft }: AcPricingMapEditorProps)
       { size_mm2: 300, copper_single_core: 64.75, copper_4c_e: 284.38, alu_single_core: 13.45, alu_4c_e: 59.27 },
       { size_mm2: 400, copper_single_core: 83.41, copper_4c_e: 359.03, alu_single_core: 17.04, alu_4c_e: 76.36 }
     ] as AcMapRow[]
+    
+    if (!onSave) return
+    setSaving(true)
     try {
-      await saveSpecs(defaultMap)
+      await onSave(defaultMap)
       setLocalMap(defaultMap)
       addToast('success', 'AC Map seeded with default data.')
     } catch (err: any) {
       addToast('error', `Failed to seed AC Map: ${err.message}`)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -76,7 +85,7 @@ export default function AcPricingMapEditor({ isDraft }: AcPricingMapEditorProps)
       >
         {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
         <span className="font-medium text-slate-200 text-sm">AC Pricing Map (AS3008)</span>
-        <span className="text-xs text-slate-600 ml-auto">Global Shared Configuration</span>
+        <span className="text-xs text-slate-600 ml-auto">Version-Specific Configuration</span>
       </button>
 
       {isExpanded && (
@@ -106,9 +115,6 @@ export default function AcPricingMapEditor({ isDraft }: AcPricingMapEditorProps)
             </div>
           </div>
 
-          {isLoading ? (
-            <div className="text-sm text-slate-500 py-4">Loading AC map...</div>
-          ) : (
             <div className="overflow-x-auto rounded-lg border border-slate-800">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-slate-800 text-slate-300">
@@ -173,7 +179,6 @@ export default function AcPricingMapEditor({ isDraft }: AcPricingMapEditorProps)
                 </tbody>
               </table>
             </div>
-          )}
         </div>
       )}
     </div>

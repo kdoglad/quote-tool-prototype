@@ -7,6 +7,7 @@ export function exportExcelTemplate(versionName: string, auditData: any) {
   // 1. Instructions Sheet
   const instructions = [
     ["Bulk Upload Excel Template"],
+    [`Data Points came from version: ${versionName || 'Draft'}`],
     [""],
     ["Instructions:"],
     ["1. Each sheet corresponds to a specification category."],

@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Plus, Send, ArrowLeft, ChevronDown, ChevronRight, Download } from 'lucide-react'
+import { Plus, Send, ArrowLeft, ChevronDown, ChevronRight, Download, Upload } from 'lucide-react'
 import { usePriceVersion } from '../../hooks/usePriceVersions'
 import { usePriceItems, useUpdatePriceItem } from '../../hooks/usePriceItems'
 import Button from '../../components/ui/Button'
@@ -16,7 +16,8 @@ import AcPricingMapEditor from '../../components/price-table/AcPricingMapEditor'
 import { useToast } from '../../components/ui/Toast'
 import { CATEGORIES } from '../../lib/constants'
 import { exportExcelTemplate } from '../../lib/exportExcelTemplate'
-import type { PriceItem } from '../../types/domain.types'
+import { importExcelTemplate } from '../../lib/importExcelTemplate'
+import type { PriceItem, AcMapRow } from '../../types/domain.types'
 
 import { supabase } from '../../lib/supabase'
 
@@ -40,6 +41,10 @@ export default function VersionEditorPage() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showPublishDialog, setShowPublishDialog] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importErrors, setImportErrors] = useState<string[]>([])
+  
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const isDraft = version?.is_draft ?? false
 
@@ -63,6 +68,71 @@ export default function VersionEditorPage() {
       console.error(err)
     } finally {
       setIsDownloading(false)
+    }
+  }
+
+  async function handleSaveAcMap(newMap: AcMapRow[]) {
+    if (!id) return
+    const { data: vRow, error: fetchErr } = await supabase
+      .from('audit_log')
+      .select('new_data')
+      .eq('audit_id', id)
+      .single()
+    if (fetchErr) throw fetchErr
+
+    const nd = vRow?.new_data || {}
+    const { error: updateErr } = await supabase
+      .from('audit_log')
+      .update({ new_data: { ...nd, ac_map: newMap } })
+      .eq('audit_id', id)
+
+    if (updateErr) throw updateErr
+    
+    qc.invalidateQueries({ queryKey: ['price-versions', id] })
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsImporting(true)
+    setImportErrors([])
+    
+    try {
+      const { data: vRow, error: fetchErr } = await supabase
+        .from('audit_log')
+        .select('new_data')
+        .eq('audit_id', id)
+        .single()
+      
+      if (fetchErr) throw fetchErr
+
+      const nd = vRow?.new_data || {}
+      const existingItems = nd.items || []
+
+      const { items: newItems, acMap: newAcMap } = await importExcelTemplate(file, existingItems)
+
+      const { error: updateErr } = await supabase
+        .from('audit_log')
+        .update({ new_data: { ...nd, items: newItems, ac_map: newAcMap } })
+        .eq('audit_id', id)
+
+      if (updateErr) throw updateErr
+
+      addToast('success', 'Template imported successfully. Draft updated.')
+      qc.invalidateQueries({ queryKey: ['price-items', id] })
+    } catch (err: any) {
+      if (typeof err === 'string' && err.includes('Sheet "')) {
+        setImportErrors(err.split('\n'))
+      } else {
+        addToast('error', err?.message || typeof err === 'string' ? err : 'Failed to import template.')
+        console.error(err)
+      }
+    } finally {
+      setIsImporting(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -207,9 +277,25 @@ export default function VersionEditorPage() {
               size="sm"
               icon={isDownloading ? <Spinner className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
               onClick={handleDownloadTemplate}
-              disabled={isDownloading}
+              disabled={isDownloading || isImporting}
             >
               Download Template
+            </Button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept=".xlsx,.xls"
+              onChange={handleFileUpload}
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={isImporting ? <Spinner className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isDownloading || isImporting}
+            >
+              Upload Template
             </Button>
             <Button
               variant="primary"
@@ -294,7 +380,11 @@ export default function VersionEditorPage() {
         })}
 
         {/* AC Pricing Map Editor */}
-        <AcPricingMapEditor isDraft={isDraft} />
+        <AcPricingMapEditor 
+          isDraft={isDraft} 
+          acMap={version?.ac_map || []} 
+          onSave={handleSaveAcMap} 
+        />
       </div>
 
       {/* Edit item dialog */}
@@ -330,6 +420,30 @@ export default function VersionEditorPage() {
             navigate('/price-table')
           }}
         />
+      )}
+
+      {/* Import Errors Dialog */}
+      {importErrors.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="px-6 py-4 border-b border-slate-800">
+              <h2 className="text-lg font-semibold text-white">Validation Errors</h2>
+              <p className="text-sm text-slate-400 mt-1">
+                The import was aborted. Please fix the following errors in your Excel file and try again:
+              </p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-2">
+              {importErrors.map((err, i) => (
+                <div key={i} className="text-sm text-red-400 bg-red-400/10 p-3 rounded border border-red-400/20">
+                  {err}
+                </div>
+              ))}
+            </div>
+            <div className="px-6 py-4 border-t border-slate-800 flex justify-end">
+              <Button onClick={() => setImportErrors([])}>Close</Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

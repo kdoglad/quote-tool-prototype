@@ -116,6 +116,18 @@ export default function PublishDialog({
 
       if (updateErr) throw updateErr
 
+      // 4. Update the global AC Map so future drafts inherit it
+      if (nd?.ac_map && Array.isArray(nd.ac_map) && nd.ac_map.length > 0) {
+        const { error: acMapErr } = await supabase
+          .from('ac_map_specs')
+          .insert({ ac_map: nd.ac_map })
+        
+        if (acMapErr) {
+          console.error('Failed to update global ac_map_specs:', acMapErr)
+          // Non-fatal, we still published successfully
+        }
+      }
+
       addToast('success', `Version "${newVersionName}" published successfully.`)
       onPublished()
     } catch (err: any) {
