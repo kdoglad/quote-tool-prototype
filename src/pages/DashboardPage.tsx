@@ -12,7 +12,7 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-semibold text-white">
           Good day, {profile?.full_name?.split(' ')[0] ?? 'there'}
         </h1>
-        <p className="text-slate-400 mt-1">Smart Commercial Solar — Quote Management System</p>
+        <p className="text-slate-400 mt-1">Smart Commercial Energy — Quote Management System</p>
       </div>
 
       {/* Quick actions */}
@@ -48,7 +48,7 @@ export default function DashboardPage() {
         </Link>
 
         <Link
-          to="/price-table"
+          to="/price-tables"
           className="group flex items-start gap-4 p-5 bg-slate-900 border border-slate-800 rounded-xl
                      hover:border-slate-700 hover:bg-slate-900/80 transition-colors"
         >

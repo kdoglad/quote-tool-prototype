@@ -21,14 +21,14 @@ math.import(
 
 // Allowed safe math functions injected into scope
 const SAFE_FUNCTIONS = {
-  abs:   Math.abs,
-  max:   (...args: number[]) => Math.max(...args),
-  min:   (...args: number[]) => Math.min(...args),
+  abs: Math.abs,
+  max: (...args: number[]) => Math.max(...args),
+  min: (...args: number[]) => Math.min(...args),
   round: Math.round,
-  ceil:  Math.ceil,
+  ceil: Math.ceil,
   floor: Math.floor,
-  sqrt:  Math.sqrt,
-  pow:   Math.pow,
+  sqrt: Math.sqrt,
+  pow: Math.pow,
 }
 
 const FORMULA_TIMEOUT_MS = 100
@@ -92,9 +92,9 @@ export function evaluateFormula(formula: string, scope: FormulaScope): FormulaEv
  * Compute the final total for a line item including any modifier.
  */
 export function computeLineItemTotal(
-  item: Pick<PriceItem, 'formula' | 'base_price'>,
+  item: Pick<PriceItem, 'formula' | 'base_price' | 'category' | 'type_value' | 'subcategory'>,
   qty: number,
-  scope: PartialFormulaScope,
+  scope: PartialFormulaScope & { inverters_qty?: number },
   modifier: { type: ModifierType; value: number }
 ): number {
   const fullScope = buildScope(scope, { base_price: item.base_price, qty })
@@ -105,6 +105,40 @@ export function computeLineItemTotal(
     raw = result.value
   } else {
     raw = item.base_price * qty
+  }
+
+  // 1. Cabling
+  if (item.type_value === 'ac_inverter_to_pvdb' || item.name?.toLowerCase().includes('inverter to pvdb')) {
+    // AC Cabling (Inverter to PVDB) is Base Price * Length * Number of Inverters
+    const invertersCount = scope.inverters_qty ?? 1
+    raw = item.base_price * qty * invertersCount
+  } else if (item.type_value === 'ac_pvdb_to_msb' || item.name?.toLowerCase().includes('pvdb to msb')) {
+    // AC Cabling (PVDB to MSB) is Base Price * Length (not multiplied by inverters)
+    raw = item.base_price * qty
+  } else if (item.subcategory === 'DC Cabling' || item.type_value === 'dc_twin_cabling') {
+    // DC Cabling is Base Price * (0.17 * SystemKw * Length) + Tray Fittings
+    const systemKw = scope.system_kw || 0
+    const length = qty
+    const dcCableCost = item.base_price * (0.17 * systemKw * length)
+    
+    // Add Tray fittings
+    const trayM = scope.cable_tray_m || 110
+    const trayFittingsCost = systemKw < 50 ? (trayM * 0.9) : (trayM * 5.7)
+    
+    // Check if Direct Buried
+    const isDirectBuried = scope.dc_cabling_type === 'Included - Direct Buried'
+    
+    if (isDirectBuried) {
+      raw = (dcCableCost * 1.36) + (trayFittingsCost * 1.15)
+    } else {
+      raw = dcCableCost + (trayFittingsCost * 1.15)
+    }
+  } else if (item.category === 'Installation' && item.type_value === 'install') {
+    // Already calculated correct qty as (systemKw * 1000)
+    raw = item.base_price * qty
+  } else if (item.category === 'Switch Gear' && item.name?.toLowerCase().includes('connection points')) {
+    // Number of connection points
+    raw = qty > 1 ? qty * 750 : 0
   }
 
   // Apply modifier
@@ -145,5 +179,165 @@ export function validateFormula(formula: string): string | null {
     return null
   } catch (err) {
     return err instanceof Error ? err.message : 'Invalid formula syntax'
+  }
+}
+
+/**
+ * Automatically calculate quantity for standard line items based on category/type rules and current scope.
+ */
+export function calculateQtyForLineItem(
+  item: { category: string; type_value?: string; unit?: string; specData?: any },
+  scope: PartialFormulaScope
+): number {
+  const systemKw = scope.system_kw || 0
+  const panelWatt = scope.panel_wattage || 440 // Default panel wattage if not specified
+  const panelQty = scope.panel_qty || Math.floor((systemKw * 1000) / panelWatt)
+
+  switch (item.type_value) {
+    case 'panels': {
+      const watt = parseFloat(item.specData?.wattage) || panelWatt
+      return Math.floor((systemKw * 1000) / watt)
+    }
+    case 'inverters': {
+      const watt = parseFloat(item.specData?.watt) || 50000
+      return Math.ceil((systemKw * 800) / watt)
+    }
+    case 'optimisers': {
+      if (
+        item.specData?.item_code?.toLowerCase().includes('not-required') ||
+        item.specData?.item_name?.toLowerCase().includes('not required')
+      ) {
+        return 0
+      }
+      const sizeVa = parseFloat(item.specData?.size_va) || 0
+      if (sizeVa > panelWatt * 2) {
+        return Math.ceil(panelQty / 2)
+      }
+      return panelQty
+    }
+    case 'racking':
+    case 'additional_racking': {
+      const unit = (item.unit || '').toLowerCase()
+      if (unit.includes('panel') || unit === 'ea') {
+        return panelQty
+      }
+      return systemKw
+    }
+    case 'batteries': {
+      const nominalKwh = parseFloat(item.specData?.nominal_kwh) || 100
+      const bessKwh = scope.bess_kwh || 0
+      return bessKwh > 0 ? Math.ceil(bessKwh / nominalKwh) : 1
+    }
+    case 'battery_inverter': {
+      const kva = parseFloat(item.specData?.kva) || 100
+      const systemKva = scope.system_kva || (systemKw * 1.25)
+      return Math.ceil(systemKva / kva)
+    }
+    case 'ac_cabling':
+    case 'ac_inverter_to_pvdb': {
+      return scope.ac_inverter_pvdb_m ?? scope.ac_cable_m ?? scope.cable_run_m ?? 5
+    }
+    case 'ac_pvdb_to_msb': {
+      return scope.ac_pvdb_msb_m ?? scope.ac_cable_m ?? scope.cable_run_m ?? 10
+    }
+    case 'dc_twin_cabling': {
+      return scope.dc_cable_m ?? scope.cable_run_m ?? 50
+    }
+    case 'cable_tray': {
+      return scope.cable_tray_m ?? 110
+    }
+    case 'trenching': {
+      return scope.trench_m ?? 0
+    }
+    case 'cabling_addons': {
+      return scope.cable_run_m || 50
+    }
+    case 'install':
+    case 'installation': {
+      const unit = (item.unit || '').toLowerCase()
+      if (unit.includes('kw')) return systemKw
+      if (unit.includes('w')) return systemKw * 1000
+      if (unit.includes('panel')) return panelQty
+      return systemKw * 1000 // Default to per-watt pricing as seen in Excel
+    }
+    case 'safety': {
+      const unit = (item.unit || '').toLowerCase()
+      if (unit === 'm' || unit.includes('meter') || unit.includes('metre')) {
+        return scope.roof_perimeter_m || 100
+      }
+      return 1
+    }
+    default:
+      return 1
+  }
+}
+
+/**
+ * Returns a human-readable string representation of the fallback calculation
+ * used for a given line item's cost.
+ */
+export function getFallbackCostFormulaString(item: Pick<PriceItem, 'formula' | 'category' | 'type_value' | 'subcategory' | 'name'>): string {
+  if (item.formula && item.formula.trim()) {
+    return item.formula;
+  }
+
+  if (item.type_value === 'ac_inverter_to_pvdb' || item.name?.toLowerCase().includes('inverter to pvdb')) {
+    return 'base_price * qty * inverters_qty';
+  } else if (item.type_value === 'ac_pvdb_to_msb' || item.name?.toLowerCase().includes('pvdb to msb')) {
+    return 'base_price * qty';
+  } else if (item.subcategory === 'DC Cabling' || item.type_value === 'dc_twin_cabling') {
+    return 'base_price * (0.17 * system_kw * qty) + tray_fittings_cost';
+  } else if (item.category === 'Installation' && item.type_value === 'install') {
+    return 'base_price * qty';
+  } else if (item.category === 'Switch Gear' && item.name?.toLowerCase().includes('connection points')) {
+    return 'qty > 1 ? qty * 750 : 0';
+  }
+
+  return 'base_price * qty';
+}
+
+/**
+ * Returns a human-readable string representation of the fallback calculation
+ * used for a given line item's quantity.
+ */
+export function getFallbackQtyFormulaString(item: { id?: string; category: string; type_value?: string; unit?: string; specData?: any }): string {
+  if (item.id?.startsWith('virtual-ac_')) {
+    return 'I = (system_kw * 1000) / (sqrt(3) * 400)\nVdrop% = (sqrt(3) * I * (length_m / 1000) * Z) / 4\nsize = AS3008_Max(Capacity >= I * 1.25, Vdrop% <= 1.5)';
+  }
+
+  switch (item.type_value) {
+    case 'panels': return 'floor((system_kw * 1000) / panel_wattage)';
+    case 'inverters': return 'ceil((system_kw * 800) / inverter_wattage)';
+    case 'optimisers': return 'panel_qty';
+    case 'racking':
+    case 'additional_racking': {
+      const unit = (item.unit || '').toLowerCase()
+      if (unit.includes('panel') || unit === 'ea') return 'panel_qty';
+      return 'system_kw';
+    }
+    case 'batteries': return 'ceil(bess_kwh / nominal_kwh)';
+    case 'battery_inverter': return 'ceil(system_kva / kva)';
+    case 'ac_cabling':
+    case 'ac_inverter_to_pvdb': return 'ac_inverter_pvdb_m ?? ac_cable_m ?? cable_run_m ?? 5';
+    case 'ac_pvdb_to_msb': return 'ac_pvdb_msb_m ?? ac_cable_m ?? cable_run_m ?? 10';
+    case 'dc_twin_cabling': return 'dc_cable_m ?? cable_run_m ?? 50';
+    case 'cable_tray': return 'cable_tray_m ?? 110';
+    case 'trenching': return 'trench_m ?? 0';
+    case 'cabling_addons': return 'cable_run_m ?? 50';
+    case 'install':
+    case 'installation': {
+      const unit = (item.unit || '').toLowerCase()
+      if (unit.includes('kw')) return 'system_kw';
+      if (unit.includes('w')) return 'system_kw * 1000';
+      if (unit.includes('panel')) return 'panel_qty';
+      return 'system_kw * 1000';
+    }
+    case 'safety': {
+      const unit = (item.unit || '').toLowerCase()
+      if (unit === 'm' || unit.includes('meter') || unit.includes('metre')) return 'roof_perimeter_m ?? 100';
+      return '1';
+    }
+    default:
+      return '1';
   }
 }

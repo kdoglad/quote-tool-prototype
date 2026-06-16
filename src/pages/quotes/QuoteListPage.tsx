@@ -5,7 +5,6 @@ import { useQuotes } from '../../hooks/useQuotes'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Spinner from '../../components/ui/Spinner'
-import { useQuoteEditorStore } from '../../stores/quoteEditorStore'
 import type { Quote } from '../../types/domain.types'
 
 const statusVariant: Record<Quote['status'], 'draft' | 'info' | 'success' | 'danger' | 'warning'> = {
@@ -18,7 +17,6 @@ const statusVariant: Record<Quote['status'], 'draft' | 'info' | 'success' | 'dan
 
 export default function QuoteListPage() {
   const { data: quotes = [], isLoading } = useQuotes()
-  const { resetStore } = useQuoteEditorStore()
   const [search, setSearch] = useState('')
 
   const filtered = quotes.filter((q) => {
@@ -39,7 +37,7 @@ export default function QuoteListPage() {
           <h1 className="text-xl font-semibold text-white">Quotes</h1>
           <p className="text-sm text-slate-400 mt-0.5">{quotes.length} quote{quotes.length !== 1 ? 's' : ''} total</p>
         </div>
-        <Link to="/quotes/new" onClick={resetStore}>
+        <Link to="/quotes/new">
           <Button variant="primary" icon={<PlusCircle className="w-4 h-4" />}>
             New Quote
           </Button>

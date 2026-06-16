@@ -1,0 +1,503 @@
+table_name,ordinal_position,column_name,data_type,is_nullable,column_default
+ac_breaker_specs,1,item_id,uuid,NO,null
+ac_breaker_specs,2,item_code,text,YES,null
+ac_breaker_specs,3,rating_a,numeric,YES,null
+ac_breaker_specs,4,name,text,YES,null
+ac_breaker_specs,5,price_per_breaker,numeric,YES,null
+ac_breaker_specs,6,breaker_type,text,YES,null
+ac_breaker_specs,7,is_projects_needed,boolean,YES,null
+ac_breaker_specs,8,created_at,timestamp with time zone,NO,now()
+ac_breaker_specs,9,updated_at,timestamp with time zone,YES,null
+ac_cabling_specs,1,item_id,uuid,NO,null
+ac_cabling_specs,2,item_code,text,NO,null
+ac_cabling_specs,5,conductor_material,text,YES,null
+ac_cabling_specs,6,single_core_price_per_meter,numeric,YES,null
+ac_cabling_specs,7,size_mm2,numeric,YES,null
+ac_cabling_specs,8,4c_plus_earth_price_per_meter,numeric,YES,null
+ac_cabling_specs,9,inclusion,text,YES,null
+ac_cabling_specs,10,notes,text,YES,null
+ac_cabling_specs,11,created_at,timestamp with time zone,NO,now()
+ac_cabling_specs,12,updated_at,timestamp with time zone,YES,null
+ac_calc,1,id,uuid,NO,gen_random_uuid()
+ac_calc,2,quote_id,uuid,YES,null
+ac_calc,3,calc_sheet,jsonb,YES,null
+ac_calc,4,created_at,timestamp with time zone,NO,now()
+ac_calc,5,updated_at,timestamp with time zone,YES,null
+ac_combiner_specs,1,item_id,uuid,NO,null
+ac_combiner_specs,2,item_code,text,NO,null
+ac_combiner_specs,3,ac_combiner_name,text,YES,null
+ac_combiner_specs,4,ac_combiner_price_per_unit,numeric,YES,null
+ac_combiner_specs,10,notes,text,YES,null
+ac_combiner_specs,11,created_at,timestamp with time zone,NO,now()
+ac_combiner_specs,12,updated_at,timestamp with time zone,YES,null
+additional_racking_specs,1,item_id,uuid,NO,null
+additional_racking_specs,2,item_name,text,NO,null
+additional_racking_specs,3,item_code,text,YES,null
+additional_racking_specs,4,total_added_price,numeric,YES,null
+additional_racking_specs,5,cost_per_watt,numeric,YES,null
+additional_racking_specs,6,cost_per_item,numeric,YES,null
+additional_racking_specs,7,unit,text,YES,null
+additional_racking_specs,8,created_at,timestamp with time zone,NO,now()
+additional_racking_specs,9,updated_at,timestamp with time zone,YES,null
+agreement_result,1,id,uuid,NO,gen_random_uuid()
+agreement_result,2,quote_id,uuid,YES,null
+agreement_result,3,agreement_sheet,jsonb,YES,null
+agreement_result,4,total_quote_price,numeric,YES,null
+agreement_result,5,is_pv_only,boolean,YES,null
+agreement_result,6,is_pv_and _bess,boolean,YES,null
+agreement_result,7,is_ev_included,boolean,YES,null
+agreement_result,8,is_bess_only,boolean,YES,null
+agreement_result,9,pv_agreement,text,YES,null
+agreement_result,10,pv_and_bess_agreement,text,YES,null
+agreement_result,11,ev_agreement,text,YES,null
+agreement_result,12,bess_agreement,text,YES,null
+agreement_result,13,created_at,timestamp with time zone,NO,now()
+agreement_result,14,updated_at,timestamp with time zone,YES,null
+audit_log,1,audit_id,uuid,NO,gen_random_uuid()
+audit_log,2,price_version,text,NO,null
+audit_log,3,notes,text,YES,null
+audit_log,4,action,text,YES,null
+audit_log,5,old_data,jsonb,YES,null
+audit_log,6,new_data,jsonb,YES,null
+audit_log,7,created_by,uuid,YES,null
+audit_log,8,created_at,timestamp with time zone,NO,now()
+audit_log,9,published_at,timestamp without time zone,YES,null
+audit_log,10,published_by,uuid,YES,null
+battery_inverter_specs,1,item_id,uuid,NO,null
+battery_inverter_specs,2,item_code,text,NO,null
+battery_inverter_specs,3,brand,text,YES,null
+battery_inverter_specs,4,item_name,text,YES,null
+battery_inverter_specs,5,kva,numeric,YES,null
+battery_inverter_specs,6,pcs_price_excl_gst,numeric,YES,null
+battery_inverter_specs,7,notes,text,YES,null
+battery_inverter_specs,8,created_at,timestamp with time zone,NO,now()
+battery_inverter_specs,9,updated_at,timestamp with time zone,YES,null
+battery_specs,1,item_id,uuid,NO,null
+battery_specs,2,item_code,text,NO,null
+battery_specs,3,item_name,text,YES,null
+battery_specs,4,brand,text,YES,null
+battery_specs,5,nominal_kwh,numeric,YES,null
+battery_specs,6,battery_price_fob,numeric,YES,null
+battery_specs,7,is_pcs_included,boolean,YES,null
+battery_specs,8,pcs_table_ref,text,YES,null
+battery_specs,9,suggested_pcs,text,YES,null
+battery_specs,10,cost_per_kwh_inc_pcs,numeric,YES,null
+battery_specs,11,notes,text,YES,null
+battery_specs,12,product_warranty,numeric,YES,null
+battery_specs,13,performance_warranty,numeric,YES,null
+battery_specs,14,is_smartstack_compatible,boolean,YES,null
+battery_specs,15,created_at,timestamp with time zone,NO,now()
+battery_specs,16,updated_at,timestamp with time zone,YES,null
+bess_calc,1,id,uuid,NO,gen_random_uuid()
+bess_calc,2,calc_sheet,jsonb,YES,null
+bess_calc,3,quote_id,uuid,NO,null
+bess_calc,5,created_at,uuid,YES,null
+bess_calc,6,updated_at,uuid,YES,null
+bess_rebate,1,id,uuid,NO,gen_random_uuid()
+bess_rebate,2,install_year,bigint,YES,null
+bess_rebate,3,install_month_start,bigint,YES,null
+bess_rebate,4,install_month_end,bigint,YES,null
+bess_rebate,5,stc_usable_kwh,numeric,YES,null
+bess_rebate,6,created_at,timestamp with time zone,NO,null
+bess_rebate,7,updated_at,timestamp with time zone,YES,null
+bessdb_specs,1,item_id,uuid,NO,null
+bessdb_specs,2,item_code,text,YES,null
+bessdb_specs,3,bessdb_type,text,YES,null
+bessdb_specs,4,full_export_price,numeric,YES,null
+bessdb_specs,5,export_limited_price,numeric,YES,null
+bessdb_specs,6,created_at,timestamp with time zone,YES,now()
+bessdb_specs,7,updated_at,timestamp with time zone,YES,null
+cabling_addons_specs,1,item_id,uuid,NO,null
+cabling_addons_specs,2,item_code,text,YES,null
+cabling_addons_specs,3,addon_type,text,YES,null
+cabling_addons_specs,4,item_name,text,YES,null
+cabling_addons_specs,5,cost_per_meter,numeric,YES,null
+cabling_addons_specs,6,created_at,timestamp with time zone,NO,now()
+cabling_addons_specs,7,updated_at,timestamp with time zone,YES,null
+catalog_items,1,item_id,uuid,NO,gen_random_uuid()
+catalog_items,3,item_code,text,NO,null
+catalog_items,4,category,text,YES,null
+catalog_items,5,subcategory,text,YES,null
+catalog_items,6,item_name,text,YES,null
+catalog_items,7,item_type,text,YES,null
+catalog_items,8,created_at,timestamp with time zone,YES,now()
+catalog_items,9,updated_at,timestamp with time zone,YES,null
+client_info,1,id,uuid,NO,gen_random_uuid()
+client_info,2,abn,text,YES,null
+client_info,3,primary_contact,text,YES,null
+client_info,4,direct_ph,text,YES,null
+client_info,5,email_address,text,YES,null
+client_info,6,nmi,text,YES,null
+client_info,7,is_off_grid,boolean,YES,null
+client_info,8,billing_address,text,YES,null
+client_info,9,suburb,text,YES,null
+client_info,10,postcode,text,YES,null
+client_info,11,state,text,YES,null
+client_info,12,sce_agent,text,YES,null
+client_info,13,direct_ph_sce,text,YES,null
+client_info,14,email_address_sce,text,YES,null
+client_info,15,created_at,timestamp with time zone,NO,now()
+client_info,16,updated_at,timestamp with time zone,YES,null
+dc_cabling_specs,1,item_id,uuid,NO,null
+dc_cabling_specs,2,item_code,text,NO,null
+dc_cabling_specs,7,conductor_material,text,YES,null
+dc_cabling_specs,8,single_core_price_per_meter,numeric,YES,null
+dc_cabling_specs,9,size_mm2,numeric,YES,null
+dc_cabling_specs,10,4c_plus_earth_price_per_meter,numeric,YES,null
+dc_cabling_specs,11,inclusion,text,YES,null
+dc_cabling_specs,12,notes,text,YES,null
+dc_cabling_specs,13,created_at,timestamp with time zone,NO,now()
+dc_cabling_specs,14,updated_at,timestamp with time zone,YES,null
+dc_combiner_specs,1,item_id,uuid,NO,null
+dc_combiner_specs,2,item_code,text,NO,null
+dc_combiner_specs,3,dc_combiner_name,text,YES,null
+dc_combiner_specs,4,dc_combiner_price_per_unit,numeric,YES,null
+dc_combiner_specs,12,notes,text,YES,null
+dc_combiner_specs,13,created_at,timestamp with time zone,NO,now()
+dc_combiner_specs,14,updated_at,timestamp with time zone,YES,null
+dc_twin_cabling_specs,1,item_id,uuid,NO,null
+dc_twin_cabling_specs,2,item_code,text,NO,null
+dc_twin_cabling_specs,3,size_twin_dc_cable_mm,numeric,YES,null
+dc_twin_cabling_specs,4,twin_dc_cable_price_per_mm,numeric,YES,null
+dc_twin_cabling_specs,10,notes,text,YES,null
+dc_twin_cabling_specs,11,created_at,timestamp with time zone,NO,now()
+dc_twin_cabling_specs,12,updated_at,timestamp with time zone,YES,null
+ev_calc,1,id,uuid,NO,gen_random_uuid()
+ev_calc,2,quote_id,uuid,YES,null
+ev_calc,3,calc_sheet,jsonb,YES,null
+ev_calc,4,created_at,timestamp with time zone,NO,now()
+ev_calc,5,updated_at,timestamp with time zone,YES,null
+global_settings,1,id,uuid,NO,gen_random_uuid()
+global_settings,2,setting_key,text,NO,null
+global_settings,3,setting_value,jsonb,NO,null
+global_settings,4,characteristic,text,NO,null
+global_settings,5,description,text,YES,null
+global_settings,6,created_at,timestamp with time zone,NO,"timezone('utc'::text, now())"
+global_settings,7,updated_at,timestamp with time zone,NO,"timezone('utc'::text, now())"
+glossary_of_terms,1,id,uuid,NO,gen_random_uuid()
+glossary_of_terms,2,phrase,text,YES,null
+glossary_of_terms,3,explanation,text,YES,null
+glossary_of_terms,4,created_at,timestamp with time zone,NO,now()
+glossary_of_terms,5,updated_at,timestamp with time zone,YES,null
+gpu_req_threshold_specs,1,item_id,uuid,NO,null
+gpu_req_threshold_specs,2,item_code,text,YES,null
+gpu_req_threshold_specs,3,dnsp,text,YES,null
+gpu_req_threshold_specs,4,required_over_kva,numeric,YES,null
+gpu_req_threshold_specs,5,is_export_limit_enforced,boolean,YES,null
+gpu_req_threshold_specs,6,created_at,timestamp with time zone,NO,now()
+gpu_req_threshold_specs,7,updated_at,timestamp with time zone,YES,null
+grid_connection_app_specs,1,item_id,uuid,NO,null
+grid_connection_app_specs,2,item_code,text,NO,null
+grid_connection_app_specs,3,state,text,YES,null
+grid_connection_app_specs,4,dnsp,text,YES,null
+grid_connection_app_specs,5,is_bess_only,boolean,YES,null
+grid_connection_app_specs,6,is_solar_or_solar_bess,boolean,YES,null
+grid_connection_app_specs,7,low_size_kva,numeric,YES,null
+grid_connection_app_specs,8,high_side_kva,numeric,YES,null
+grid_connection_app_specs,9,preliminary_enquiry,numeric,YES,null
+grid_connection_app_specs,10,app_fee_tech_assessment,numeric,YES,null
+grid_connection_app_specs,11,additional_cost,numeric,YES,null
+grid_connection_app_specs,12,hv_site_variation,numeric,YES,null
+grid_connection_app_specs,13,full_export_variation,numeric,YES,null
+grid_connection_app_specs,14,total_network_fee,numeric,YES,null
+grid_connection_app_specs,15,notes,text,YES,null
+grid_connection_app_specs,16,is_project_needed,boolean,YES,null
+grid_connection_app_specs,17,created_at,timestamp with time zone,NO,now()
+grid_connection_app_specs,18,updated_at,timestamp with time zone,YES,null
+handover_checklist,1,id,uuid,NO,gen_random_uuid()
+handover_checklist,2,quote_id,uuid,YES,null
+handover_checklist,3,handover_sheet,jsonb,YES,null
+handover_checklist,4,status,text,YES,null
+handover_checklist,5,created_at,timestamp with time zone,NO,now()
+handover_checklist,6,updated_at,timestamp with time zone,YES,null
+harm_filtering_specs,1,item_id,uuid,NO,null
+harm_filtering_specs,2,item_type,text,NO,null
+harm_filtering_specs,3,price_per_unit,numeric,YES,null
+harm_filtering_specs,4,item_code,text,YES,null
+harm_filtering_specs,5,created_at,timestamp with time zone,NO,now()
+harm_filtering_specs,6,updated_at,timestamp with time zone,YES,null
+inclusions_calc,1,id,uuid,NO,gen_random_uuid()
+inclusions_calc,2,quote_id,uuid,YES,null
+inclusions_calc,3,calc_sheet,jsonb,YES,null
+inclusions_calc,4,created_at,timestamp with time zone,NO,now()
+inclusions_calc,5,updated_at,timestamp with time zone,YES,null
+install_specs,1,item_id,uuid,NO,null
+install_specs,2,item_code,text,YES,null
+install_specs,3,install_item,text,YES,null
+install_specs,4,item_type,text,YES,null
+install_specs,5,price,numeric,YES,null
+install_specs,6,unit,text,YES,null
+install_specs,7,created_at,timestamp with time zone,YES,now()
+install_specs,8,updated_at,timestamp with time zone,YES,null
+internal_glossary,1,id,uuid,NO,gen_random_uuid()
+internal_glossary,2,category,text,YES,null
+internal_glossary,3,term,text,YES,null
+internal_glossary,4,definition,text,YES,null
+internal_glossary,5,created_at,timestamp with time zone,NO,now()
+internal_glossary,6,updated_at,timestamp with time zone,YES,null
+inverter_specs,1,item_id,uuid,NO,null
+inverter_specs,2,item_code,text,NO,null
+inverter_specs,3,brand,text,YES,null
+inverter_specs,4,model,text,YES,null
+inverter_specs,5,warranty_years,numeric,YES,null
+inverter_specs,6,watt,numeric,YES,null
+inverter_specs,7,cost_per_unit,numeric,YES,null
+inverter_specs,8,created_at,timestamp with time zone,NO,now()
+inverter_specs,9,updated_at,timestamp with time zone,YES,null
+inverter_station_specs,1,item_id,uuid,NO,null
+inverter_station_specs,2,item_code,text,NO,null
+inverter_station_specs,3,inverter_station,text,YES,null
+inverter_station_specs,4,inverter_station_cost_per_unit,numeric,YES,null
+inverter_station_specs,5,created_at,timestamp with time zone,NO,now()
+inverter_station_specs,6,updated_at,timestamp with time zone,YES,null
+lifting_specs,1,item_id,uuid,NO,null
+lifting_specs,2,item_code,text,YES,null
+lifting_specs,3,lifting_type,text,YES,null
+lifting_specs,4,name,text,YES,null
+lifting_specs,5,total_cost,numeric,YES,null
+lifting_specs,6,set_up_est_price,numeric,YES,null
+lifting_specs,7,cost_per_time,numeric,YES,null
+lifting_specs,8,time,numeric,YES,null
+lifting_specs,9,unit,text,YES,null
+lifting_specs,10,number_of_lifts,numeric,YES,null
+lifting_specs,11,establishments,numeric,YES,null
+lifting_specs,12,is_battery_install,boolean,YES,null
+lifting_specs,13,created_at,timestamp with time zone,NO,now()
+lifting_specs,14,updated_at,timestamp with time zone,YES,null
+monitoring_addons_specs,1,item_id,uuid,NO,null
+monitoring_addons_specs,2,item_code,text,YES,null
+monitoring_addons_specs,3,item_type,text,YES,null
+monitoring_addons_specs,4,item_name,text,YES,null
+monitoring_addons_specs,5,price,numeric,YES,null
+monitoring_addons_specs,6,unit,text,YES,null
+monitoring_addons_specs,7,created_at,timestamp with time zone,NO,now()
+monitoring_addons_specs,8,updated_at,timestamp with time zone,YES,null
+monitoring_warranty_manual_inputs,1,id,uuid,NO,gen_random_uuid()
+monitoring_warranty_manual_inputs,2,quote_id,uuid,YES,null
+monitoring_warranty_manual_inputs,3,addon_sheet,jsonb,YES,null
+monitoring_warranty_manual_inputs,4,total_price,numeric,YES,null
+monitoring_warranty_manual_inputs,5,created_at,timestamp with time zone,NO,now()
+monitoring_warranty_manual_inputs,6,updated_at,timestamp with time zone,YES,null
+monitoring_warranty_specs,1,item_id,uuid,NO,null
+monitoring_warranty_specs,2,item_code,text,YES,null
+monitoring_warranty_specs,3,item_type,text,YES,null
+monitoring_warranty_specs,4,item_name,text,YES,null
+monitoring_warranty_specs,5,price,numeric,YES,null
+monitoring_warranty_specs,6,unit,text,YES,null
+monitoring_warranty_specs,7,created_at,timestamp with time zone,NO,now()
+monitoring_warranty_specs,8,updated_at,timestamp with time zone,YES,null
+netnada_addons_specs,1,item_id,uuid,NO,null
+netnada_addons_specs,2,item_code,text,YES,null
+netnada_addons_specs,3,item_name,text,YES,null
+netnada_addons_specs,4,price,numeric,YES,null
+netnada_addons_specs,5,payment_plan,text,YES,null
+netnada_addons_specs,6,created_at,timestamp with time zone,NO,now()
+netnada_addons_specs,7,updated_at,timestamp with time zone,YES,null
+netnada_specs,1,item_id,uuid,NO,null
+netnada_specs,2,item_code,text,NO,null
+netnada_specs,3,plan_type,text,YES,null
+netnada_specs,4,price,numeric,YES,null
+netnada_specs,5,payment_plan,text,YES,null
+netnada_specs,6,created_at,timestamp with time zone,NO,now()
+netnada_specs,7,updated_at,timestamp with time zone,YES,null
+optimiser_specs,1,item_id,uuid,NO,null
+optimiser_specs,2,item_code,text,NO,null
+optimiser_specs,3,optimiser_name,text,YES,null
+optimiser_specs,4,size_va,numeric,YES,null
+optimiser_specs,5,price_per_unit,numeric,YES,null
+optimiser_specs,6,created_at,timestamp with time zone,NO,now()
+optimiser_specs,7,updated_at,timestamp with time zone,YES,null
+panel_specs,1,item_id,uuid,NO,null
+panel_specs,2,item_code,text,NO,null
+panel_specs,3,item_type,text,YES,null
+panel_specs,4,brand,text,YES,null
+panel_specs,5,product_warranty,numeric,YES,null
+panel_specs,6,performance_warranty,numeric,YES,null
+panel_specs,7,wattage,numeric,YES,null
+panel_specs,8,cost_per_watt,numeric,YES,null
+panel_specs,9,datasheet_code,text,YES,null
+panel_specs,10,is_local_stock,boolean,YES,null
+panel_specs,11,notes,text,YES,null
+panel_specs,12,created_at,timestamp with time zone,NO,now()
+panel_specs,13,updated_at,timestamp with time zone,YES,null
+panel_specs,14,item_name,text,YES,null
+pfc_specs,1,item_id,uuid,NO,null
+pfc_specs,2,pfc_type,text,NO,null
+pfc_specs,3,price_per_unit,numeric,YES,null
+pfc_specs,4,item_code,text,YES,null
+pfc_specs,5,created_at,timestamp with time zone,NO,now()
+pfc_specs,6,updated_at,timestamp with time zone,YES,null
+prelim_specs,1,item_id,uuid,NO,null
+prelim_specs,2,item_code,text,NO,null
+prelim_specs,3,item_type,text,YES,null
+prelim_specs,4,item_name,text,YES,null
+prelim_specs,5,price_total,numeric,YES,null
+prelim_specs,6,created_at,timestamp with time zone,NO,now()
+prelim_specs,7,updated_at,timestamp with time zone,YES,null
+procore_budget,1,id,uuid,NO,gen_random_uuid()
+procore_budget,2,quote_id,uuid,YES,null
+procore_budget,3,cost_code,text,NO,null
+procore_budget,4,description,text,YES,null
+procore_budget,5,amount,numeric,NO,null
+procore_budget,6,category,text,YES,null
+procore_budget,7,created_at,timestamp with time zone,NO,"timezone('utc'::text, now())"
+procore_budget,8,updated_at,timestamp with time zone,NO,"timezone('utc'::text, now())"
+pvdb_specs,1,item_id,uuid,NO,null
+pvdb_specs,2,item_code,text,NO,null
+pvdb_specs,3,pvdb_type,text,YES,null
+pvdb_specs,4,full_export_price,numeric,YES,null
+pvdb_specs,5,export_limited_price,numeric,YES,null
+pvdb_specs,6,created_at,timestamp with time zone,YES,null
+pvdb_specs,7,updated_at,timestamp with time zone,YES,null
+quote_calc,1,id,uuid,NO,gen_random_uuid()
+quote_calc,2,quote_id,uuid,YES,null
+quote_calc,3,calc_sheet,jsonb,YES,null
+quote_calc,4,created_at,timestamp with time zone,NO,now()
+quote_calc,5,updated_at,timestamp with time zone,YES,null
+quote_inputs,1,id,uuid,NO,uuid_generate_v4()
+quote_inputs,2,quote_id,uuid,NO,null
+quote_inputs,3,key,text,NO,null
+quote_inputs,4,value,jsonb,NO,null
+quote_install_info,1,id,bigint,NO,null
+quote_install_info,2,total_system_size_kw,numeric,YES,null
+quote_install_info,3,funding_model,text,YES,null
+quote_install_info,4,install_address,text,YES,null
+quote_install_info,5,suburb,text,YES,null
+quote_install_info,6,postcode,text,YES,null
+quote_install_info,7,state,text,YES,null
+quote_install_info,8,stcs_on_first_100kw,boolean,YES,null
+quote_install_info,9,expected_commissioning_year,integer,YES,null
+quote_install_info,10,expected_commissioning_month,text,YES,null
+quote_install_info,11,existing_pv_kwp,numeric,YES,null
+quote_install_info,12,existing_pv_kva,numeric,YES,null
+quote_install_info,13,hv_customer,boolean,YES,null
+quote_install_info,14,site_inspection_confirmed,boolean,YES,null
+quote_install_info,15,created_at,timestamp with time zone,NO,now()
+quote_install_info,16,updated_at,timestamp with time zone,YES,null
+quote_items,1,id,uuid,NO,uuid_generate_v4()
+quote_items,2,quote_id,uuid,NO,null
+quote_items,3,catalog_id,uuid,YES,null
+quote_items,4,quote_number,text,YES,null
+quote_items,5,category,text,YES,null
+quote_items,6,subcategory,text,YES,null
+quote_items,7,item_code,text,YES,null
+quote_items,8,item_name,text,YES,null
+quote_items,9,item_type,text,YES,null
+quote_items,10,qty,numeric,YES,null
+quote_items,11,unit,text,YES,null
+quote_items,12,cost_per_watt,numeric,YES,null
+quote_items,13,sale_cost_per_watt,numeric,YES,null
+quote_items,14,quoted_cost,numeric,YES,null
+quote_items,15,quoted_markup,numeric,YES,null
+quote_items,16,quoted_sales_cost,numeric,YES,null
+quote_items,17,total_line_amount,numeric,YES,null
+quote_items,18,created_at,timestamp with time zone,YES,null
+quote_items,19,updated_at,timestamp with time zone,YES,null
+quote_items,20,version_used,text,YES,null
+quote_snapshots,1,id,uuid,NO,uuid_generate_v4()
+quote_snapshots,2,quote_id,uuid,NO,null
+quote_snapshots,3,version_number,integer,NO,null
+quote_snapshots,4,snapshot,jsonb,NO,null
+quote_snapshots,5,change_note,text,YES,null
+quote_snapshots,6,created_by,uuid,NO,null
+quote_snapshots,7,created_at,timestamp with time zone,NO,now()
+quotes,1,id,uuid,NO,uuid_generate_v4()
+quotes,2,quote_number,text,YES,null
+quotes,3,project_name,text,NO,null
+quotes,4,status,USER-DEFINED,NO,'draft'::quote_status
+quotes,5,price_version_id,uuid,NO,null
+quotes,6,client_info_id,uuid,NO,null
+quotes,11,site_address,text,NO,null
+quotes,12,site_suburb,text,NO,null
+quotes,13,site_state,text,NO,null
+quotes,14,site_postcode,text,NO,null
+quotes,15,nmi,text,YES,null
+quotes,16,dnsp,text,YES,null
+quotes,17,system_kw,numeric,YES,null
+quotes,18,system_kva,numeric,YES,null
+quotes,19,has_bess,boolean,YES,false
+quotes,20,has_ev,boolean,YES,false
+quotes,21,existing_solar_kw,numeric,YES,0
+quotes,22,valid_until,date,YES,null
+quotes,23,internal_notes,text,YES,null
+quotes,24,created_by,uuid,NO,null
+quotes,25,assigned_to,uuid,YES,null
+quotes,26,created_at,timestamp with time zone,NO,now()
+quotes,27,updated_at,timestamp with time zone,NO,now()
+racking_specs,1,item_id,uuid,NO,null
+racking_specs,2,item_code,text,NO,null
+racking_specs,3,racking_type,text,YES,null
+racking_specs,4,cost_per_panel,numeric,YES,null
+racking_specs,5,created_at,timestamp with time zone,NO,now()
+racking_specs,6,updated_at,timestamp with time zone,YES,null
+racking_specs,7,cost_per_watt,numeric,YES,null
+rebate_calc,1,id,uuid,NO,gen_random_uuid()
+rebate_calc,2,quote_id,uuid,NO,null
+rebate_calc,3,calc_sheet,jsonb,YES,null
+rebate_calc,4,created_at,timestamp with time zone,YES,now()
+rebate_calc,5,updated_at,timestamp with time zone,YES,null
+safety_manual_inputs,1,id,uuid,NO,gen_random_uuid()
+safety_manual_inputs,2,quote_id,uuid,YES,null
+safety_manual_inputs,3,addon_sheet,jsonb,YES,null
+safety_manual_inputs,4,total_price,numeric,YES,null
+safety_manual_inputs,5,created_at,timestamp with time zone,NO,now()
+safety_manual_inputs,6,updated_at,timestamp with time zone,YES,null
+safety_specs,1,item_id,uuid,NO,null
+safety_specs,2,item_code,text,YES,null
+safety_specs,3,item_type,text,YES,null
+safety_specs,4,item_name,text,YES,null
+safety_specs,5,price,numeric,YES,null
+safety_specs,6,unit,text,YES,null
+safety_specs,7,created_at,timestamp with time zone,NO,now()
+safety_specs,8,updated_id,timestamp with time zone,YES,null
+service_model_calc,1,id,uuid,NO,gen_random_uuid()
+service_model_calc,2,quote_id,uuid,YES,null
+service_model_calc,3,calc_sheet,jsonb,YES,null
+service_model_calc,4,created_at,timestamp with time zone,NO,now()
+service_model_calc,5,updated_at,timestamp with time zone,YES,null
+specs_manual_input,1,id,uuid,NO,gen_random_uuid()
+specs_manual_input,2,quote_id,uuid,YES,null
+specs_manual_input,3,spec_sheet,jsonb,YES,null
+specs_manual_input,4,total_price,numeric,YES,null
+specs_manual_input,5,created_at,timestamp with time zone,YES,now()
+specs_manual_input,6,updated_at,timestamp with time zone,YES,null
+switch_gear_calc,1,id,uuid,NO,gen_random_uuid()
+switch_gear_calc,2,quote_id,uuid,NO,null
+switch_gear_calc,3,calc_sheet,jsonb,YES,null
+switch_gear_calc,4,created_at,timestamp with time zone,YES,null
+switch_gear_calc,5,updated_at,timestamp with time zone,YES,null
+switch_gear_specs,1,item_id,uuid,NO,null
+switch_gear_specs,2,item_code,text,YES,null
+switch_gear_specs,3,item_type,text,YES,null
+switch_gear_specs,4,item_name,text,YES,null
+switch_gear_specs,5,total_price,numeric,YES,null
+switch_gear_specs,6,created_at,timestamp with time zone,YES,now()
+switch_gear_specs,7,updated_at,timestamp with time zone,YES,null
+travel_accoms_freight_specs,1,item_id,uuid,NO,null
+travel_accoms_freight_specs,2,item_code,text,YES,null
+travel_accoms_freight_specs,3,travel_rates,text,YES,null
+travel_accoms_freight_specs,4,distance_frm_city_center,numeric,YES,null
+travel_accoms_freight_specs,5,travel,numeric,YES,null
+travel_accoms_freight_specs,6,accom,numeric,YES,null
+travel_accoms_freight_specs,7,freight,numeric,YES,null
+travel_accoms_freight_specs,8,total,numeric,YES,null
+travel_accoms_freight_specs,9,created_at,timestamp with time zone,NO,now()
+travel_accoms_freight_specs,10,updated_at,timestamp with time zone,YES,null
+user_profiles,1,id,uuid,NO,null
+user_profiles,2,role,text,NO,null
+user_profiles,3,full_name,text,NO,null
+user_profiles,4,email,text,NO,null
+user_profiles,5,is_active,boolean,NO,true
+user_profiles,6,created_at,timestamp with time zone,NO,now()
+user_profiles,7,updated_at,timestamp with time zone,NO,now()
+user_profiles,8,initials,text,YES,null
+user_profiles,9,phone,text,YES,null
+witness_injection_testing_specs,1,item_id,uuid,NO,null
+witness_injection_testing_specs,2,item_code,text,NO,null
+witness_injection_testing_specs,3,dnsp,text,YES,null
+witness_injection_testing_specs,4,required_over_kva,numeric,YES,null
+witness_injection_testing_specs,5,price_total,numeric,YES,null
+witness_injection_testing_specs,6,created_at,timestamp with time zone,NO,now()
+witness_injection_testing_specs,7,updated_at,timestamp with time zone,YES,null
+witness_injection_testing_specs,8,solar_solar_bess_price,numeric,YES,null
+witness_injection_testing_specs,9,bess_only_price,numeric,YES,null

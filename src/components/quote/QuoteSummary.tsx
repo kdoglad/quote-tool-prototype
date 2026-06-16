@@ -9,7 +9,7 @@ interface QuoteSummaryProps {
 }
 
 export default function QuoteSummary({ items, systemKw, className }: QuoteSummaryProps) {
-  const { subtotal, rebateTotal, netBeforeGST, gst, total } = useQuoteTotals(items)
+  const { subtotal, rebateTotal, netBeforeGST, gst, total } = useQuoteTotals(items, systemKw)
   const pricePerKw = systemKw > 0 ? netBeforeGST / systemKw : 0
 
   return (

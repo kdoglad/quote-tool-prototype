@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, FileText, Table, LogOut, ChevronRight, FlaskConical } from 'lucide-react'
+import { LayoutDashboard, FileText, LogOut, ChevronRight, FlaskConical, Database } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { isPreviewMode } from '../../lib/supabase'
 import { clsx } from 'clsx'
@@ -10,7 +10,7 @@ const navItems = [
 ]
 
 const engineerItems = [
-  { to: '/price-table', label: 'Price Tables', icon: Table, exact: false },
+  { to: '/price-tables', label: 'Price Tables', icon: Database, exact: false },
 ]
 
 export default function Sidebar() {
@@ -28,7 +28,7 @@ export default function Sidebar() {
           </svg>
         </div>
         <span className="text-sm font-semibold text-white leading-tight">
-          SCS<br />
+          SCE<br />
           <span className="text-slate-400 font-normal">Quote Tool</span>
         </span>
       </div>

@@ -9,13 +9,10 @@ import QuoteEditorPage from '../pages/quotes/QuoteEditorPage'
 import VersionListPage from '../pages/price-table/VersionListPage'
 import VersionEditorPage from '../pages/price-table/VersionEditorPage'
 
-// Auth guard: redirects to /login if not authenticated.
-// In preview mode (no Supabase configured), auth is bypassed entirely.
 function AuthGuard() {
   const session = useAuthStore((s) => s.session)
   const loading = useAuthStore((s) => s.loading)
 
-  // Preview mode: skip auth, render the app directly
   if (isPreviewMode) return <Outlet />
 
   if (loading) {
@@ -51,7 +48,7 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            path: 'price-table',
+            path: 'price-tables',
             children: [
               { index: true, element: <VersionListPage /> },
               { path: ':id', element: <VersionEditorPage /> },

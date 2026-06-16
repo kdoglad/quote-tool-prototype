@@ -7,10 +7,33 @@ import type {
   ModifierType,
   InclusionStatus,
 } from '../../types/domain.types'
-import { CATEGORIES } from '../../lib/constants'
+import { CATEGORIES, CATALOG_CATEGORY_OPTIONS } from '../../lib/constants'
 import LineItemRow from './LineItemRow'
 import Button from '../ui/Button'
 import { clsx } from 'clsx'
+
+// Build subcategory ordering from CATALOG_CATEGORY_OPTIONS
+const SUBCATEGORY_ORDER = new Map<string, number>(
+  CATALOG_CATEGORY_OPTIONS.map((opt, idx) => [opt.label, idx])
+)
+
+// Helper to group items by subcategory, ordered to match price table layout
+function groupBySubcategory(items: ComputedLineItem[]) {
+  const groups = new Map<string, ComputedLineItem[]>()
+  items.forEach(item => {
+    const subcat = item.subcategory || 'Other'
+    if (!groups.has(subcat)) {
+      groups.set(subcat, [])
+    }
+    groups.get(subcat)!.push(item)
+  })
+  // Sort subcategories based on CATALOG_CATEGORY_OPTIONS order
+  return Array.from(groups.entries()).sort((a, b) => {
+    const orderA = SUBCATEGORY_ORDER.get(a[0]) ?? 999
+    const orderB = SUBCATEGORY_ORDER.get(b[0]) ?? 999
+    return orderA - orderB
+  })
+}
 
 interface LineItemsTableProps {
   items: ComputedLineItem[]
@@ -46,11 +69,20 @@ export default function LineItemsTable({
   const [expandedCategories, setExpandedCategories] = useState<Set<ItemCategory>>(
     new Set(CATEGORIES.map((c) => c.value))
   )
+  const [expandedSubcategories, setExpandedSubcategories] = useState<Set<string>>(new Set())
 
   function toggleCategory(cat: ItemCategory) {
     setExpandedCategories((prev) => {
       const next = new Set(prev)
       next.has(cat) ? next.delete(cat) : next.add(cat)
+      return next
+    })
+  }
+
+  function toggleSubcategory(key: string) {
+    setExpandedSubcategories((prev) => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
       return next
     })
   }
@@ -76,7 +108,7 @@ export default function LineItemsTable({
         const isExpanded = expandedCategories.has(cat)
         const catTotal = catItems
           .filter((i) => i.is_included)
-          .reduce((sum, i) => sum + i.computed_total, 0)
+          .reduce((sum, i) => sum + (i.sales_rate || 0), 0)
 
         return (
           <div key={cat} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
@@ -102,43 +134,77 @@ export default function LineItemsTable({
             </button>
 
             {isExpanded && (
-              <div className="border-t border-slate-800 overflow-x-auto">
-                <table className="w-full min-w-[720px]">
-                  <thead>
-                    <tr className="text-xs text-slate-600 border-b border-slate-800/50">
-                      <th className="pl-3 pr-2 py-2 text-left w-36">Status</th>
-                      <th className="pr-3 py-2 text-left w-20">Code</th>
-                      <th className="pr-3 py-2 text-left">Description</th>
-                      <th className="pr-3 py-2 text-left w-10">Unit</th>
-                      <th className="pr-3 py-2 text-right w-20">Qty</th>
-                      <th className="pr-3 py-2 text-right w-24">Rate</th>
-                      <th className="pr-3 py-2 text-center w-24">Adj.</th>
-                      <th className="pr-3 py-2 text-right w-28">Total</th>
-                      {showComparison && (
-                        <th className="pr-3 py-2 text-right w-24 text-amber-600">Δ</th>
+              <div className="border-t border-slate-800">
+                {groupBySubcategory(catItems).map(([subcategory, subcatItems]) => {
+                  const subcatKey = `${cat}-${subcategory}`
+                  const isSubcatExpanded = expandedSubcategories.has(subcatKey)
+                  const subcatTotal = subcatItems
+                    .filter((i) => i.is_included)
+                    .reduce((sum, i) => sum + (i.sales_rate || 0), 0)
+
+                  return (
+                    <div key={subcatKey} className="border-b border-slate-800/50 last:border-b-0">
+                      {/* Subcategory header */}
+                      <button
+                        onClick={() => toggleSubcategory(subcatKey)}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-slate-800/20 transition-colors"
+                      >
+                        {isSubcatExpanded
+                          ? <ChevronDown className="w-3 h-3 text-slate-600 shrink-0" />
+                          : <ChevronRight className="w-3 h-3 text-slate-600 shrink-0" />
+                        }
+                        <span className="text-xs font-medium text-slate-400 flex-1">{subcategory}</span>
+                        <span className="text-xs font-mono text-slate-500">
+                          {subcatTotal !== 0
+                            ? `$${subcatTotal.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                            : '—'
+                          }
+                        </span>
+                      </button>
+
+                      {/* Subcategory items */}
+                      {isSubcatExpanded && (
+                        <div className="overflow-x-auto">
+                          <table className="w-full min-w-[720px]">
+                            <thead>
+                              <tr className="text-xs text-slate-600 border-b border-slate-800/50 bg-slate-900/50">
+                                <th className="pl-3 pr-2 py-2 text-left w-36">Status</th>
+                                <th className="pr-3 py-2 text-left w-20">Code</th>
+                                <th className="pr-3 py-2 text-left">Description</th>
+                                <th className="pr-3 py-2 text-left w-10">Unit</th>
+                                <th className="pr-3 py-2 text-right w-20">Qty</th>
+                                <th className="pr-3 py-2 text-right w-24">Rate</th>
+                                <th className="pr-3 py-2 text-right w-28">Total</th>
+                                {showComparison && (
+                                  <th className="pr-3 py-2 text-right w-24 text-amber-600">Δ</th>
+                                )}
+                                <th className="pr-2 py-2 w-8" />
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {subcatItems.map((item) => (
+                                <LineItemRow
+                                  key={item.instance_id}
+                                  item={item}
+                                  scope={scope}
+                                  comparisonTotal={showComparison ? comparisonMap.get(item.code) : undefined}
+                                  readOnly={readOnly}
+                                  onStatusChange={(status) => onStatusChange(item.instance_id, status)}
+                                  onQtyChange={(qty) => onQtyChange(item.instance_id, qty)}
+                                  onModifierChange={(type, value, note) => onModifierChange(item.instance_id, type, value, note)}
+                                  onDuplicate={() => onDuplicate(item.instance_id)}
+                                  onRemove={item.is_removable ? () => onRemove(item.instance_id) : undefined}
+                                  onOptionChange={(groupId, optionId) => onOptionChange(item.instance_id, groupId, optionId)}
+                                  onFormulaOverride={(formula) => onFormulaOverride(item.instance_id, formula)}
+                                />
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       )}
-                      <th className="pr-2 py-2 w-8" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {catItems.map((item) => (
-                      <LineItemRow
-                        key={item.instance_id}
-                        item={item}
-                        scope={scope}
-                        comparisonTotal={showComparison ? comparisonMap.get(item.code) : undefined}
-                        readOnly={readOnly}
-                        onStatusChange={(status) => onStatusChange(item.instance_id, status)}
-                        onQtyChange={(qty) => onQtyChange(item.instance_id, qty)}
-                        onModifierChange={(type, value, note) => onModifierChange(item.instance_id, type, value, note)}
-                        onDuplicate={() => onDuplicate(item.instance_id)}
-                        onRemove={item.is_removable ? () => onRemove(item.instance_id) : undefined}
-                        onOptionChange={(groupId, optionId) => onOptionChange(item.instance_id, groupId, optionId)}
-                        onFormulaOverride={(formula) => onFormulaOverride(item.instance_id, formula)}
-                      />
-                    ))}
-                  </tbody>
-                </table>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -154,9 +220,10 @@ export default function LineItemsTable({
           onClick={onAddCustomItem}
           className="w-full justify-center border border-dashed border-slate-700 hover:border-slate-600"
         >
-          Add Custom Line Item
+          Add/Update Item
         </Button>
       )}
     </div>
   )
 }
+

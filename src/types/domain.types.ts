@@ -12,8 +12,6 @@ export type ModifierType = 'none' | 'flat' | 'percent'
 export type InclusionStatus =
   | 'included'          // Counted in total, shown in inclusions list
   | 'not_required'      // Not counted, shown in exclusions list
-  | 'provisional_sum'   // Counted in total, marked "PS" — price to be confirmed
-  | 'appears_adequate'  // Not counted, excluded with note that existing equip is sufficient
 
 export type ItemCategory =
   | 'Prelim'
@@ -26,6 +24,7 @@ export type ItemCategory =
   | 'Monitoring'
   | 'EV'
   | 'Rebates'
+  | 'AC_Calculation'
   | 'Custom'
 
 export type InstallType = 'rooftop' | 'ground' | 'carport'
@@ -59,6 +58,22 @@ export interface PriceVersion {
   published_by: string | null
   created_at: string
   created_by: string | null
+  ac_map?: AcMapRow[]
+}
+
+export interface AcMapRow {
+  size_mm2: number;
+  copper_single_core: number | null;
+  copper_4c_e: number | null;
+  alu_single_core: number | null;
+  alu_4c_e: number | null;
+}
+
+export interface AcMapSpecs {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  ac_map: AcMapRow[];
 }
 
 export interface PriceItem {
@@ -77,6 +92,8 @@ export interface PriceItem {
   is_active: boolean
   notes: string | null
   created_at: string
+  specData?: Record<string, any>
+  type_value?: string
 }
 
 // A named selection dimension for a price item (e.g. "Configuration", "Enclosure Type")
@@ -126,10 +143,22 @@ export interface FormulaScope {
   // Flags
   has_bess: boolean
   has_ev: boolean
+  optimisers?: string
   // Cabling
   dc_cable_m: number
-  ac_cable_m: number
-  cable_run_m: number
+  dc_cable_size: string
+  ac_cable_m: number // legacy
+  cable_run_m: number // legacy
+  dc_cabling_type: string
+  ac_inverter_pvdb_type: string
+  ac_inverter_pvdb_construction: string
+  ac_inverter_pvdb_m: number
+  ac_pvdb_msb_type: string
+  ac_pvdb_msb_construction: string
+  ac_pvdb_msb_m: number
+  cable_tray_type: string
+  cable_tray_m: number
+  trenching_type: string
   trench_m: number
   trench_type: TrenchType
   trench_depth_m: number
@@ -151,6 +180,8 @@ export interface FormulaScope {
   veec_price: number
   fit_rate: number
   fit_hours: number
+  panel_wattage?: number
+  panel_qty?: number
   // Item-specific (injected per-evaluation)
   base_price: number
   qty: number
@@ -183,6 +214,10 @@ export interface ComputedLineItem {
   name: string
   unit: string
   qty: number
+  manual_qty: number
+  calculated_qty: number
+  use_calculated_qty: boolean
+  use_manual_qty: boolean
   base_unit_price: number
   formula: string | null
   modifier_type: ModifierType
@@ -200,6 +235,12 @@ export interface ComputedLineItem {
   delta?: number
   delta_percent?: number
   sort_order: number
+  specData?: Record<string, any>
+  type_value?: string
+  cost: number
+  cost_per_watt: number
+  sales_rate: number
+  sale_per_watt: number
 }
 
 // ============================================================
@@ -212,12 +253,19 @@ export interface Quote {
   project_name: string
   status: QuoteStatus
   price_version_id: string
-  // Customer
+  // Customer (legacy)
   customer_name: string
   customer_company: string | null
   customer_email: string | null
   customer_phone: string | null
   customer_abn: string | null
+  // Customer (client_info fields)
+  primary_contact?: string
+  direct_ph?: string
+  email_address?: string
+  abn?: string
+  is_off_grid?: boolean
+  billing_address?: string
   // Site
   site_address: string
   site_suburb: string
@@ -314,6 +362,8 @@ export interface QuoteLineItemState {
   price_item_id: string | null  // null for custom items
   inclusion_status: InclusionStatus
   qty: number
+  use_calculated_qty?: boolean
+  use_manual_qty?: boolean
   // groupId → optionId; only groups the user has explicitly chosen are stored
   selected_options: Record<string, string>
   // null = use the price item's default formula; string = per-quote override
@@ -349,11 +399,20 @@ export interface CustomLineItem {
 
 export interface SiteDetailsFormData {
   project_name: string
+  // Legacy fields (kept for backwards compatibility)
   customer_name: string
   customer_company: string
   customer_email: string
   customer_phone: string
   customer_abn: string
+  // New client_info table fields
+  primary_contact: string
+  direct_ph: string
+  email_address: string
+  abn: string
+  is_off_grid: boolean
+  billing_address: string
+  // Site fields
   site_address: string
   site_suburb: string
   site_state: string
@@ -362,6 +421,25 @@ export interface SiteDetailsFormData {
   dnsp: string
   valid_until: string
   internal_notes: string
+  // Cabling type dropdowns
+  dc_cabling_type?: string
+  dc_cable_size?: string
+  dc_cable_m?: number
+  ac_inverter_pvdb_type?: string
+  ac_inverter_pvdb_construction?: string
+  ac_inverter_pvdb_m?: number
+  ac_pvdb_msb_type?: string
+  ac_pvdb_msb_construction?: string
+  ac_pvdb_msb_m?: number
+  cable_tray_type?: string
+  cable_tray_m?: number
+  trenching_type?: string
+  trench_m?: number
+  optimisers?: string
+  // Manual Markups
+  manual_target_markup?: number | null
+  manual_minimum_markup?: number | null
+  manual_proposed_markup?: number | null
 }
 
 // ============================================================
