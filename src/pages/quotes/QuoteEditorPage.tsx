@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, Fragment } from 'react'
+import { useState, useCallback, useEffect, useMemo, Fragment } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Save, ArrowLeft, ChevronDown, ChevronRight, Calculator, TrendingUp, Clock, Settings, Zap, Wrench } from 'lucide-react'
 import { useQuoteEditorStore } from '../../stores/quoteEditorStore'
@@ -18,8 +18,6 @@ import { extractNMIPrefix, resolveDNSP, inferStateFromDNSP, buildDNSPScope } fro
 import { usePriceItemOptions } from '../../hooks/usePriceItemOptions'
 import { useComputedLineItems, useQuoteTotals } from '../../hooks/useComputedLineItems'
 import { useDNSPRules } from '../../hooks/useDNSPRules'
-import { evaluateFormula } from '../../lib/formulaEngine'
-import { InlineFormulaEditor } from '../../components/quote/InlineFormulaEditor'
 import LineItemRow from '../../components/quote/LineItemRow'
 
 const EMPTY_ARRAY: any[] = []

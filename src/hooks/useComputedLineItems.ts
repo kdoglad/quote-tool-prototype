@@ -550,7 +550,7 @@ export function useComputedLineItems(
 // ── Helpers ──────────────────────────────────────────────────
 
 function inclusionToBoolean(status: InclusionStatus): boolean {
-  return status === 'included' || status === 'provisional_sum'
+  return status === 'included'
 }
 
 /**
@@ -749,7 +749,7 @@ function buildCustomItem(li: QuoteLineItemState, scope: PartialFormulaScope): Co
   const isIncluded = inclusionToBoolean(li.inclusion_status)
   const formulaTotal = isIncluded
     ? computeLineItemTotal(
-        { formula: li.custom_formula ?? null, base_price: li.custom_base_price ?? 0 },
+        { formula: li.custom_formula ?? null, base_price: li.custom_base_price ?? 0, category: li.custom_category ?? 'Custom', type_value: undefined, subcategory: null, name: li.custom_name ?? 'Custom Item' } as any,
         li.qty,
         scope,
         { type: li.modifier_type, value: li.modifier_value }
@@ -822,7 +822,7 @@ function buildVirtualAcCabling(
   const acKw = (scope.system_kw || 100) 
   const size = calculateAcCableSize(acKw, lengthM, material)
 
-  const mapRow = acMap.find(row => row.size_mm2 == size)
+  const mapRow = acMap.find(row => String(row.size_mm2) === String(size))
   let basePrice = 0
   if (mapRow) {
     const is4C = construction.includes('4C')
