@@ -45,7 +45,7 @@ export function buildScope(
     ...quoteInputs,
     base_price: itemOverrides.base_price,
     qty: itemOverrides.qty,
-  }
+  } as FormulaScope
 }
 
 /**
@@ -92,7 +92,7 @@ export function evaluateFormula(formula: string, scope: FormulaScope): FormulaEv
  * Compute the final total for a line item including any modifier.
  */
 export function computeLineItemTotal(
-  item: Pick<PriceItem, 'formula' | 'base_price' | 'category' | 'type_value' | 'subcategory'>,
+  item: Pick<PriceItem, 'formula' | 'base_price' | 'category' | 'type_value' | 'subcategory' | 'name'>,
   qty: number,
   scope: PartialFormulaScope & { inverters_qty?: number },
   modifier: { type: ModifierType; value: number }
@@ -133,10 +133,10 @@ export function computeLineItemTotal(
     } else {
       raw = dcCableCost + (trayFittingsCost * 1.15)
     }
-  } else if (item.category === 'Installation' && item.type_value === 'install') {
+  } else if (item.category === 'Install' && item.type_value === 'install') {
     // Already calculated correct qty as (systemKw * 1000)
     raw = item.base_price * qty
-  } else if (item.category === 'Switch Gear' && item.name?.toLowerCase().includes('connection points')) {
+  } else if (item.category === 'Switchgear' && item.name?.toLowerCase().includes('connection points')) {
     // Number of connection points
     raw = qty > 1 ? qty * 750 : 0
   }
@@ -287,9 +287,9 @@ export function getFallbackCostFormulaString(item: Pick<PriceItem, 'formula' | '
     return 'base_price * qty';
   } else if (item.subcategory === 'DC Cabling' || item.type_value === 'dc_twin_cabling') {
     return 'base_price * (0.17 * system_kw * qty) + tray_fittings_cost';
-  } else if (item.category === 'Installation' && item.type_value === 'install') {
+  } else if (item.category === 'Install' && item.type_value === 'install') {
     return 'base_price * qty';
-  } else if (item.category === 'Switch Gear' && item.name?.toLowerCase().includes('connection points')) {
+  } else if (item.category === 'Switchgear' && item.name?.toLowerCase().includes('connection points')) {
     return 'qty > 1 ? qty * 750 : 0';
   }
 

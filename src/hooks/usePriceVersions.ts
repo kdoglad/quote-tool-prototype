@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import type { AcMapRow } from '../types/domain.types'
 
 export interface PriceVersion {
   id: string           // audit_id (UUID) — used as route param
@@ -10,6 +11,7 @@ export interface PriceVersion {
   published_by: string | null
   created_at: string
   created_by: string | null
+  ac_map?: AcMapRow[]
 }
 
 /** Fetch all versions. Each audit_log row with action DRAFT or PUBLISHED is one version. */

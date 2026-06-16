@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { MoreVertical, Copy, Trash2, RotateCcw, AlertCircle, CheckCircle, Calculator, ChevronDown } from 'lucide-react'
+import { MoreVertical, Copy, Trash2, RotateCcw, ChevronDown } from 'lucide-react'
 import { clsx } from 'clsx'
 import type { ComputedLineItem, PartialFormulaScope, ModifierType, InclusionStatus } from '../../types/domain.types'
 import FormulaTooltip from './FormulaTooltip'
@@ -178,7 +178,6 @@ const SPEC_FIELD_MAPPINGS: Record<string, { label: string; key: string }[]> = {
 export default function LineItemRow({
   item,
   scope,
-  comparisonTotal,
   readOnly,
   onStatusChange,
   onQtyChange,
@@ -200,7 +199,6 @@ export default function LineItemRow({
     setQtyStr(String(item.qty))
   }, [item.qty])
 
-  const showDelta = comparisonTotal !== undefined
   const hasModifier = item.modifier_type !== 'none' && item.modifier_value !== 0
   const isExcluded = !item.is_included
   const hasOptions = item.option_groups.length > 0
@@ -278,7 +276,7 @@ export default function LineItemRow({
 
   // All remaining spec fields (excluding the main descriptor and excluded keys)
   const allSpecFields = (() => {
-    if (!item.specData) return []
+    if (!item.specData || !item.type_value) return []
     const specFields = SPEC_FIELD_MAPPINGS[item.type_value] || []
     
     return Object.keys(item.specData)
@@ -289,7 +287,7 @@ export default function LineItemRow({
         return val !== undefined && val !== null && val !== ''
       })
       .map((key) => {
-        const field = specFields.find(f => f.key === key)
+        const field = specFields.find((f: any) => f.key === key)
         return {
           key,
           label: field ? field.label : key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
