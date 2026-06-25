@@ -101,8 +101,12 @@ export default function QuoteEditorPage() {
   const [isTrenchingExpanded, setIsTrenchingExpanded] = useState(false)
 
   const [projectName, setProjectName] = useState('')
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Prelim']))
-  const [expandedSubcategories, setExpandedSubcategories] = useState<Set<string>>(new Set())
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Prelim', 'PV_Components']))
+  const [expandedSubcategories, setExpandedSubcategories] = useState<Set<string>>(new Set([
+    'Prelim-Grid Connection',
+    'PV_Components-Solar Panels',
+    'PV_Components-Inverters'
+  ]))
 
   // Loading state tracking
   const [isLoadingQuote, setIsLoadingQuote] = useState(false)
@@ -926,13 +930,35 @@ export default function QuoteEditorPage() {
                   .filter(item => item.is_included)
                   .reduce((sum, item) => sum + (item.sales_rate || 0), 0)
 
+                const subcatNames = Object.keys(subcategories)
+                const allSubcatsExpanded = subcatNames.every(name => expandedSubcategories.has(`${category.id}-${name}`))
+
                 return (
                   <div key={category.id} className="border border-slate-700 rounded-lg overflow-hidden">
-                    <button
-                      onClick={() => toggleCategory(category.id)}
-                      className="w-full flex items-center justify-between px-4 py-3 bg-slate-800 hover:bg-slate-750 transition-colors"
-                    >
-                      <span className="font-medium text-white text-sm">{category.label}</span>
+                    <div className="w-full flex items-center justify-between px-4 py-3 bg-slate-800 hover:bg-slate-750 transition-colors cursor-pointer" onClick={() => toggleCategory(category.id)}>
+                      <div className="flex items-center gap-4">
+                        <span className="font-medium text-white text-sm">{category.label}</span>
+                        {isExpanded && subcatNames.length > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const next = new Set(expandedSubcategories)
+                              subcatNames.forEach(name => {
+                                const key = `${category.id}-${name}`
+                                if (allSubcatsExpanded) {
+                                  next.delete(key)
+                                } else {
+                                  next.add(key)
+                                }
+                              })
+                              setExpandedSubcategories(next)
+                            }}
+                            className="text-[10px] font-semibold text-slate-400 bg-slate-900/50 hover:bg-slate-700 px-2 py-1 rounded transition-colors uppercase tracking-wider"
+                          >
+                            {allSubcatsExpanded ? 'Collapse All' : 'Expand All'}
+                          </button>
+                        )}
+                      </div>
                       <div className="flex items-center gap-3">
                         {categoryTotal > 0 && (
                           <span className="text-sm text-emerald-400 font-medium">
@@ -941,7 +967,7 @@ export default function QuoteEditorPage() {
                         )}
                         {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
                       </div>
-                    </button>
+                    </div>
 
                     {isExpanded && (
                       <div className="bg-slate-900 overflow-x-auto pb-2">
@@ -965,28 +991,72 @@ export default function QuoteEditorPage() {
                               const subcatKey = `${category.id}-${subcatName}`
                               const isSubcatExpanded = expandedSubcategories.has(subcatKey)
 
-                              const subcatTotal = items
-                                .filter(item => item.is_included)
-                                .reduce((sum, item) => sum + (item.sales_rate || 0), 0)
+                              const includedItems = items.filter(item => item.is_included)
+                              const subcatTotal = includedItems.reduce((sum, item) => sum + (item.sales_rate || 0), 0)
+                              
+                              const summaryText = includedItems.length > 0 
+                                ? `${includedItems.length} included: ${includedItems.map(i => i.code).join(', ')}`
+                                : 'None included'
 
                               return (
                                 <Fragment key={subcatKey}>
-                                  <tr className="bg-slate-850 hover:bg-slate-800 transition-colors cursor-pointer group"
-                                    onClick={() => {
-                                      const next = new Set(expandedSubcategories)
-                                      if (next.has(subcatKey)) {
-                                        next.delete(subcatKey)
-                                      } else {
-                                        next.add(subcatKey)
-                                      }
-                                      setExpandedSubcategories(next)
-                                    }}
-                                  >
+                                  <tr className="bg-slate-850 hover:bg-slate-800 transition-colors group">
                                     <td colSpan={10} className="px-4 py-2">
                                       <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                          {isSubcatExpanded ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
-                                          <span className="text-xs font-medium text-slate-300">{subcatName}</span>
+                                        <div className="flex items-center gap-3">
+                                          <input
+                                            type="checkbox"
+                                            checked={isSubcatExpanded || includedItems.length > 0}
+                                            ref={el => {
+                                              if (el) {
+                                                el.indeterminate = includedItems.length > 0 && includedItems.length < items.length;
+                                              }
+                                            }}
+                                            onChange={(e) => {
+                                              const isTurningOn = e.target.checked;
+                                              if (isTurningOn) {
+                                                // Expand to make items available, but don't auto-include them
+                                                const next = new Set(expandedSubcategories);
+                                                next.add(subcatKey);
+                                                setExpandedSubcategories(next);
+                                              } else {
+                                                // Collapse and remove all items in this subcategory from the quote
+                                                const next = new Set(expandedSubcategories);
+                                                next.delete(subcatKey);
+                                                setExpandedSubcategories(next);
+                                                
+                                                items.forEach(item => {
+                                                  if (item.is_included) {
+                                                    const store = useQuoteEditorStore.getState();
+                                                    store.setLineItemState(item.instance_id, { inclusion_status: 'not_required' });
+                                                  }
+                                                });
+                                              }
+                                            }}
+                                            className="w-3.5 h-3.5 rounded border-slate-600 bg-slate-800 text-brand-500 focus:ring-brand-500 cursor-pointer"
+                                            title={isSubcatExpanded || includedItems.length > 0 ? "Click to clear and collapse" : "Click to expand and select items"}
+                                          />
+                                          <button 
+                                            onClick={() => {
+                                              const next = new Set(expandedSubcategories)
+                                              if (next.has(subcatKey)) {
+                                                next.delete(subcatKey)
+                                              } else {
+                                                next.add(subcatKey)
+                                              }
+                                              setExpandedSubcategories(next)
+                                            }}
+                                            className="flex items-center gap-2 focus:outline-none hover:text-brand-400 transition-colors"
+                                          >
+                                            {isSubcatExpanded ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
+                                            <span className="text-xs font-medium text-slate-300">{subcatName}</span>
+                                          </button>
+                                          
+                                          {!isSubcatExpanded && (
+                                            <span className="text-[11px] text-slate-500 italic ml-2 truncate max-w-[400px]">
+                                              {summaryText}
+                                            </span>
+                                          )}
                                         </div>
                                         {subcatTotal > 0 && (
                                           <span className="text-xs text-emerald-400 font-medium">

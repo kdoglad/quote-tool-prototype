@@ -313,22 +313,19 @@ export default function LineItemRow({
     >
       {/* Inclusion status */}
       <td className="pl-3 pr-2 py-2 w-36 align-top relative">
-        <div className="flex flex-col gap-1.5">
-          <select
-            value={item.inclusion_status}
-            onChange={(e) => onStatusChange(e.target.value as InclusionStatus)}
-            disabled={readOnly}
-            className={clsx(
-              'w-full text-xs rounded px-1.5 py-1 border focus:outline-none focus:ring-1 focus:ring-brand-500',
-              'cursor-pointer transition-colors appearance-none shrink-0',
-              statusStyle(item.inclusion_status),
-              readOnly && 'opacity-60 cursor-default'
-            )}
-          >
-            {INCLUSION_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+        <div className="flex flex-col gap-1.5 items-start mt-2.5">
+          <label className={clsx("flex items-center gap-2 cursor-pointer group", readOnly && "opacity-60 cursor-default pointer-events-none")}>
+            <input 
+              type="checkbox"
+              checked={item.is_included}
+              onChange={(e) => onStatusChange(e.target.checked ? 'included' : 'not_required')}
+              disabled={readOnly}
+              className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-brand-500 focus:ring-brand-500 cursor-pointer"
+            />
+            <span className={clsx("text-xs font-medium transition-colors", item.is_included ? "text-emerald-400" : "text-slate-500 group-hover:text-slate-400")}>
+              {item.is_included ? 'Included' : 'Not Required'}
+            </span>
+          </label>
           
           <div className="flex items-center gap-1.5 flex-wrap">
             {item.is_custom && (
