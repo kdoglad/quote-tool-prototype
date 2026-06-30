@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { MoreVertical, Copy, Trash2, RotateCcw, ChevronDown } from 'lucide-react'
 import { clsx } from 'clsx'
-import type { ComputedLineItem, PartialFormulaScope, ModifierType, InclusionStatus } from '../../types/domain.types'
+import type { ComputedLineItem, PartialFormulaScope, ModifierType } from '../../types/domain.types'
 import FormulaTooltip from './FormulaTooltip'
 import { getFallbackCostFormulaString, getFallbackQtyFormulaString } from '../../lib/formulaEngine'
 
