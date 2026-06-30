@@ -6,18 +6,6 @@ import FormulaTooltip from './FormulaTooltip'
 import { getFallbackCostFormulaString, getFallbackQtyFormulaString } from '../../lib/formulaEngine'
 
 
-const INCLUSION_OPTIONS: { value: InclusionStatus; label: string }[] = [
-  { value: 'included', label: 'Included' },
-  { value: 'not_required', label: 'Not Required' },
-]
-
-function statusStyle(status: InclusionStatus) {
-  switch (status) {
-    case 'included': return 'bg-emerald-950 border-emerald-800/60 text-emerald-300'
-    case 'not_required': return 'bg-slate-900 border-slate-700 text-slate-500'
-  }
-}
-
 interface LineItemRowProps {
   item: ComputedLineItem
   scope: PartialFormulaScope
