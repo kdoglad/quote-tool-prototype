@@ -1,10 +1,12 @@
+import { supabase } from './supabase';
+import { PREFIX_MAP, CATALOG_CATEGORY_OPTIONS } from './constants';
 import * as XLSX from 'xlsx';
 import { SPEC_TABLES, UI_FIELDS, AC_MAP_FIELDS, FIELD_TYPES } from './excelTemplateConfig';
 
 export async function importExcelTemplate(file: File, existingItems: any[]): Promise<{ items: any[], acMap: any[] }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: 'array' });
@@ -12,6 +14,40 @@ export async function importExcelTemplate(file: File, existingItems: any[]): Pro
         const errors: string[] = [];
         const newItems: any[] = [];
         const newAcMap: any[] = [];
+
+        // Fetch max item codes for auto-generation
+        const { data: catData, error: catErr } = await supabase.from('catalog_items').select('item_code');
+        if (catErr) {
+          reject('Failed to fetch existing item codes from database');
+          return;
+        }
+
+        const prefixMaxes: Record<string, number> = {};
+        const updateMax = (code: string | undefined | null) => {
+          if (code && typeof code === 'string') {
+            const match = code.match(/^([A-Z]+)-(\d+)$/i);
+            if (match) {
+              const pfx = match[1].toUpperCase();
+              const num = parseInt(match[2], 10);
+              if (!prefixMaxes[pfx] || num > prefixMaxes[pfx]) {
+                prefixMaxes[pfx] = num;
+              }
+            }
+          }
+        };
+
+        if (catData) {
+          catData.forEach(row => updateMax(row.item_code));
+        }
+        existingItems.forEach(ei => updateMax(ei.catalog_data?.item_code));
+
+        const getNextItemCode = (cat: string) => {
+          const prefix = PREFIX_MAP[cat] || 'XX';
+          const currentMax = prefixMaxes[prefix] || 0;
+          const newMax = currentMax + 1;
+          prefixMaxes[prefix] = newMax;
+          return `${prefix}-${newMax.toString().padStart(3, '0')}`;
+        };
 
         // 1. Process AC Map
         if (wb.SheetNames.includes('AC Map')) {
@@ -76,12 +112,12 @@ export async function importExcelTemplate(file: File, existingItems: any[]): Pro
             if (isEmptyRow) continue;
 
             if (!itemCode || String(itemCode).trim() === '') {
-              errors.push(`Sheet "${sheetName}", Row ${i + 2}: 'item_code' is required.`);
-              continue;
+              // Auto-generate item code instead of throwing error
+              itemCode = getNextItemCode(cat);
             }
             
             itemCode = String(itemCode).trim();
-            const specData: any = {};
+            const specData: any = { item_code: itemCode };
             const catalogData: any = { item_code: itemCode };
 
             for (const field of fields) {
@@ -116,6 +152,23 @@ export async function importExcelTemplate(file: File, existingItems: any[]): Pro
               }
             }
 
+            // DB Schema Mappings to fix column mismatch errors
+            if (table === 'inverter_specs' && 'cost_per_watt' in specData) {
+              specData.cost_per_unit = specData.cost_per_watt;
+              delete specData.cost_per_watt;
+            }
+            if (table === 'battery_specs' && 'battery_price_fwb' in specData) {
+              specData.battery_price_fob = specData.battery_price_fwb;
+              delete specData.battery_price_fwb;
+            }
+            if (table === 'harm_filtering_specs' && 'item_name' in specData) {
+              delete specData.item_name; // Belongs to catalog_items only
+            }
+            if (table === 'ac_cabling_specs' && 'cable_type' in specData) {
+              delete specData.cable_type; // Not in ac_cabling_specs DB table
+            }
+
+
             // Find existing item in draft to reuse item_id if possible
             const existingItem = existingItems.find(
               (ei: any) => ei.table_name === table && String(ei.catalog_data?.item_code).trim() === itemCode
@@ -136,6 +189,7 @@ export async function importExcelTemplate(file: File, existingItems: any[]): Pro
             }
 
             catalogData.item_id = itemId;
+            specData.item_id = itemId; // Ensure the specs table also gets the item_id
 
             newItems.push({
               change_id: changeId,

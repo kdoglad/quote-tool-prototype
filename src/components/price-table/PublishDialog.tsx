@@ -75,6 +75,11 @@ export default function PublishDialog({
               specPayload.ac_combiner_price_per_unit = specPayload.ac_combiner_price
               delete specPayload.ac_combiner_price
             }
+            
+            // Explicitly ensure item_id is present in spec payload for the foreign key / not-null constraint
+            if (entry.catalog_data?.item_id) {
+              specPayload.item_id = entry.catalog_data.item_id
+            }
 
             const { error: specErr } = await supabase.from(entry.table_name).upsert(specPayload)
             if (specErr) {
