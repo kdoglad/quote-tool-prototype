@@ -11,7 +11,6 @@ interface LineItemRowProps {
   scope: PartialFormulaScope
   comparisonTotal?: number
   readOnly?: boolean
-  onStatusChange: (status: InclusionStatus) => void
   onQtyChange: (qty: number) => void
   onModifierChange: (type: ModifierType, value: number, note: string) => void
   onDuplicate: () => void
@@ -167,7 +166,6 @@ export default function LineItemRow({
   item,
   scope,
   readOnly,
-  onStatusChange,
   onQtyChange,
   onDuplicate,
   onRemove,
