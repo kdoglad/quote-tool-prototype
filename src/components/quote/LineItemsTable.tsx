@@ -41,7 +41,6 @@ interface LineItemsTableProps {
   comparisonItems?: ComputedLineItem[]
   showComparison?: boolean
   readOnly?: boolean
-  onStatusChange: (instanceId: string, status: InclusionStatus) => void
   onQtyChange: (instanceId: string, qty: number) => void
   onModifierChange: (instanceId: string, type: ModifierType, value: number, note: string) => void
   onDuplicate: (instanceId: string) => void
@@ -57,7 +56,6 @@ export default function LineItemsTable({
   comparisonItems,
   showComparison,
   readOnly,
-  onStatusChange,
   onQtyChange,
   onModifierChange,
   onDuplicate,
