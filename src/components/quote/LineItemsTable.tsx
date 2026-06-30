@@ -189,7 +189,6 @@ export default function LineItemsTable({
                                   scope={scope}
                                   comparisonTotal={showComparison ? comparisonMap.get(item.code) : undefined}
                                   readOnly={readOnly}
-                                  onStatusChange={(status) => onStatusChange(item.instance_id, status)}
                                   onQtyChange={(qty) => onQtyChange(item.instance_id, qty)}
                                   onModifierChange={(type, value, note) => onModifierChange(item.instance_id, type, value, note)}
                                   onDuplicate={() => onDuplicate(item.instance_id)}
