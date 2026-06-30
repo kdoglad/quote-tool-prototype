@@ -455,6 +455,20 @@ export default function QuoteEditorPage() {
   // Group computed items by category and subcategory dynamically
   const groupedItems = useMemo(() => {
     const groups: Record<string, Record<string, ComputedLineItem[]>> = {}
+    
+    // Pre-fill subcategories that have adjustment factors so they are always visible
+    groups['Racking'] = {
+      'Primary Racking': [],
+      'Additional Racking': []
+    }
+    groups['Cabling'] = {
+      'Twin DC Cabling': [],
+      'Cabling Addons': []
+    }
+    groups['AC_Calculation'] = {
+      'AC Calculation': []
+    }
+
     computedItems.forEach(item => {
       const category = item.category
       const subcategory = item.subcategory || 'Other'
@@ -767,10 +781,6 @@ export default function QuoteEditorPage() {
               
               {isPcmExpanded && (
                 <div className="space-y-3">
-                  <Select label="1. Racking" value={installInfo.racking || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking: e.target.value }))}
-                    options={['Base Tin Installation', 'Base Tile Installation', 'Ground Mounted (Fixed Tilt)', 'Ground Mounted (Single Axis)', 'Concrete Roof Mounted (not including waterproofing)', 'Ballasted System', 'Floating (ex. Anchors and Extras)', 'Carpark'].map(v => ({ value: v, label: v }))} />
-                  <Select label="2. Racking 2" value={installInfo.racking2 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking2: e.target.value }))}
-                    options={['Flush Mounted', 'Frameless', 'Klip Lock Addition', 'Tilt Legs Addition', 'Wind Zone C/D', 'Klip Lock + Tilt Legs Addition', 'Klip Lock Addition + Wind Zone C/D', 'Tilt Legs + Wind Zone C/D Addition', 'Klip Lock + Tilt Legs Addition + Wind Zone C/D Addition'].map(v => ({ value: v, label: v }))} />
                   <Select label="3. System Complexity" value={installInfo.system_complexity || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, system_complexity: e.target.value }))}
                     options={['Standard', 'Complex', 'Multi Roof', 'Large Scale Roof', 'Ground mounted mechanical + electrical'].map(v => ({ value: v, label: v }))} />
                   <Select label="4. Client co-operativeness" value={installInfo.client_cooperativeness || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, client_cooperativeness: e.target.value }))}
@@ -813,96 +823,6 @@ export default function QuoteEditorPage() {
               )}
             </div>
 
-            {/* Cabling Details */}
-            <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-4 shadow-sm mt-6">
-              <button 
-                onClick={() => setIsCablingExpanded(!isCablingExpanded)}
-                className="w-full flex items-center justify-between mb-2 group"
-              >
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-brand-400" />
-                  Cabling Details
-                </h3>
-                {isCablingExpanded ? <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" /> : <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />}
-              </button>
-              
-              {isCablingExpanded && (
-                <div className="space-y-4">
-                  <div className="space-y-2 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
-                    <h4 className="text-xs font-semibold text-slate-300 uppercase">DC Cabling</h4>
-                    <div className="flex flex-col gap-2">
-                      <Select label="Type" value={installInfo.dc_cabling_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cabling_type: e.target.value }))}
-                        options={[{ value: 'No Match', label: 'No Match' }, { value: 'Included - Standard Cable', label: 'Included - Standard Cable' }, { value: 'Included - Direct Buried', label: 'Included - Direct Buried' }, { value: 'Not Included', label: 'Not Included' }]} />
-                      <div className="grid grid-cols-1 gap-2">
-                        <Select label="Size" value={installInfo.dc_cable_size || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cable_size: e.target.value }))}
-                          options={['4 mm', '6 mm', '10 mm', '16 mm'].map(s => ({ value: s, label: s }))} />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
-                    <h4 className="text-xs font-semibold text-slate-300 uppercase">AC Inverter to PVDB</h4>
-                    <div className="flex flex-col gap-2">
-                      <Select label="Type" value={installInfo.ac_inverter_pvdb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_inverter_pvdb_type: e.target.value }))}
-                        options={[{ value: 'No Match', label: 'No Match' }, { value: 'Included - Copper', label: 'Included - Copper' }, { value: 'Included - Aluminium', label: 'Included - Aluminium' }, { value: 'Not Included', label: 'Not Included' }]} />
-                      <div className="grid grid-cols-2 gap-2">
-                        <Select label="Construction" value={installInfo.ac_inverter_pvdb_construction || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_inverter_pvdb_construction: e.target.value }))}
-                          options={['Single Core', '4C + E'].map(s => ({ value: s, label: s }))} />
-                        <Input label="Length" type="number" step="0.1" value={installInfo.ac_inverter_pvdb_m || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_inverter_pvdb_m: parseFloat(e.target.value) || 0 }))} suffix="m" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
-                    <h4 className="text-xs font-semibold text-slate-300 uppercase">AC PVDB to MSB</h4>
-                    <div className="flex flex-col gap-2">
-                      <Select label="Type" value={installInfo.ac_pvdb_msb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_pvdb_msb_type: e.target.value }))}
-                        options={[{ value: 'No Match', label: 'No Match' }, { value: 'Included - Copper', label: 'Included - Copper' }, { value: 'Included - Aluminium', label: 'Included - Aluminium' }, { value: 'Not Included', label: 'Not Included' }]} />
-                      <div className="grid grid-cols-2 gap-2">
-                        <Select label="Construction" value={installInfo.ac_pvdb_msb_construction || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_pvdb_msb_construction: e.target.value }))}
-                          options={['Single Core', '4C + E'].map(s => ({ value: s, label: s }))} />
-                        <Input label="Length" type="number" step="0.1" value={installInfo.ac_pvdb_msb_m || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_pvdb_msb_m: parseFloat(e.target.value) || 0 }))} suffix="m" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
-                    <h4 className="text-xs font-semibold text-slate-300 uppercase">Cable Tray</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <Select label="Type" value={installInfo.cable_tray_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, cable_tray_type: e.target.value }))}
-                        options={[{ value: 'No Match', label: 'No Match' }, { value: 'GAL', label: 'GAL' }, { value: 'FRP', label: 'FRP' }, { value: 'None', label: 'None' }]} />
-                      <Input label="Length" type="number" step="1" value={installInfo.cable_tray_m || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, cable_tray_m: parseInt(e.target.value) || 0 }))} suffix="m" />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Trenching */}
-            <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-4 shadow-sm mt-6 mb-6">
-              <button 
-                onClick={() => setIsTrenchingExpanded(!isTrenchingExpanded)}
-                className="w-full flex items-center justify-between mb-2 group"
-              >
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Wrench className="w-4 h-4 text-brand-400" />
-                  Trenching
-                </h3>
-                {isTrenchingExpanded ? <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" /> : <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />}
-              </button>
-              
-              {isTrenchingExpanded && (
-                <div className="space-y-3">
-                  <Select label="Trenching Type" value={installInfo.trenching_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, trenching_type: e.target.value }))}
-                    options={[
-                      { value: 'No Match', label: 'No Match' },
-                      { value: 'Not Included', label: 'Not Included' },
-                      { value: 'Soft Ground', label: 'Soft Ground' },
-                      { value: 'Hard Ground', label: 'Hard Ground' }
-                    ]} />
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
@@ -974,8 +894,7 @@ export default function QuoteEditorPage() {
                         <table className="w-full text-left border-collapse table-fixed min-w-[1200px]">
                           <thead>
                             <tr className="bg-slate-850 border-b border-slate-800 text-xs font-medium text-slate-400">
-                              <th className="font-medium px-4 py-3 w-36 whitespace-nowrap">Status</th>
-                              <th className="font-medium pr-3 py-3 w-20 whitespace-nowrap">Code</th>
+                              <th className="font-medium pl-4 pr-3 py-3 w-20 whitespace-nowrap">Code</th>
                               <th className="font-medium pr-3 py-3 w-full">Description</th>
                               <th className="font-medium pr-3 py-3 w-24 text-right whitespace-nowrap">Calc Qty</th>
                               <th className="font-medium pr-3 py-3 w-20 text-right whitespace-nowrap">Qty</th>
@@ -1015,26 +934,22 @@ export default function QuoteEditorPage() {
                                             onChange={(e) => {
                                               const isTurningOn = e.target.checked;
                                               if (isTurningOn) {
-                                                // Expand to make items available, but don't auto-include them
                                                 const next = new Set(expandedSubcategories);
                                                 next.add(subcatKey);
                                                 setExpandedSubcategories(next);
                                               } else {
-                                                // Collapse and remove all items in this subcategory from the quote
                                                 const next = new Set(expandedSubcategories);
                                                 next.delete(subcatKey);
                                                 setExpandedSubcategories(next);
                                                 
-                                                items.forEach(item => {
-                                                  if (item.is_included) {
-                                                    const store = useQuoteEditorStore.getState();
-                                                    store.setLineItemState(item.instance_id, { inclusion_status: 'not_required' });
-                                                  }
+                                                includedItems.forEach(item => {
+                                                  const store = useQuoteEditorStore.getState();
+                                                  store.setLineItemState(item.instance_id, { inclusion_status: 'not_required' });
                                                 });
                                               }
                                             }}
                                             className="w-3.5 h-3.5 rounded border-slate-600 bg-slate-800 text-brand-500 focus:ring-brand-500 cursor-pointer"
-                                            title={isSubcatExpanded || includedItems.length > 0 ? "Click to clear and collapse" : "Click to expand and select items"}
+                                            title={isSubcatExpanded || includedItems.length > 0 ? "Click to clear all and collapse" : "Click to expand"}
                                           />
                                           <button 
                                             onClick={() => {
@@ -1067,36 +982,183 @@ export default function QuoteEditorPage() {
                                     </td>
                                   </tr>
 
-                                  {isSubcatExpanded && items.map((item) => (
-                                    <LineItemRow
-                                      key={item.instance_id}
-                                      item={item}
-                                      scope={scope as PartialFormulaScope}
-                                      onStatusChange={(status) => handleItemStatusChange(item.instance_id, status)}
-                                      onQtyChange={(qty) => handleItemQtyChange(item.instance_id, qty)}
-                                      onUseCalcQtyChange={(useCalc) => {
-                                        const store = useQuoteEditorStore.getState()
-                                        store.setLineItemState(item.instance_id, { use_calculated_qty: useCalc })
-                                      }}
-                                      onOptionChange={(groupId, optionId) => {
-                                        const store = useQuoteEditorStore.getState()
-                                        store.setOptionSelection(item.instance_id, groupId, optionId)
-                                      }}
-                                      onFormulaOverride={(formula) => {
-                                        const store = useQuoteEditorStore.getState()
-                                        store.setFormulaOverride(item.instance_id, formula)
-                                      }}
-                                      onModifierChange={() => { }}
-                                      onDuplicate={() => {
-                                        const store = useQuoteEditorStore.getState()
-                                        store.duplicateLineItem(item.instance_id)
-                                      }}
-                                      onRemove={() => {
-                                        const store = useQuoteEditorStore.getState()
-                                        store.removeLineItem(item.instance_id)
-                                      }}
-                                    />
-                                  ))}
+                                  {isSubcatExpanded && (
+                                    <>
+                                      {subcatName === 'Primary Racking' && (
+                                        <tr>
+                                          <td colSpan={10} className="px-8 py-3 bg-slate-850/30 border-b border-slate-800/50">
+                                            <div className="flex items-center gap-6">
+                                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Adjustment Factors:</span>
+                                              <div className="w-64">
+                                                <Select label="Racking Type" value={installInfo.racking || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking: e.target.value }))}
+                                                  options={['Base Tin Installation', 'Base Tile Installation', 'Ground Mounted (Fixed Tilt)', 'Ground Mounted (Single Axis)', 'Concrete Roof Mounted (not including waterproofing)', 'Ballasted System', 'Floating (ex. Anchors and Extras)', 'Carpark'].map(v => ({ value: v, label: v }))} />
+                                              </div>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      )}
+                                      {subcatName === 'Additional Racking' && (
+                                        <tr>
+                                          <td colSpan={10} className="px-8 py-3 bg-slate-850/30 border-b border-slate-800/50">
+                                            <div className="flex items-center gap-6">
+                                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Adjustment Factors:</span>
+                                              <div className="w-64">
+                                                <Select label="Additional Racking Type" value={installInfo.racking2 || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, racking2: e.target.value }))}
+                                                  options={['Flush Mounted', 'Frameless', 'Klip Lock Addition', 'Tilt Legs Addition', 'Wind Zone C/D', 'Klip Lock + Tilt Legs Addition', 'Klip Lock Addition + Wind Zone C/D', 'Tilt Legs + Wind Zone C/D Addition', 'Klip Lock + Tilt Legs Addition + Wind Zone C/D Addition'].map(v => ({ value: v, label: v }))} />
+                                              </div>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      )}
+                                      {subcatName === 'Twin DC Cabling' && (
+                                        <tr>
+                                          <td colSpan={10} className="px-8 py-3 bg-slate-850/30 border-b border-slate-800/50">
+                                            <div className="flex items-center gap-6">
+                                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Adjustment Factors:</span>
+                                              <div className="flex items-center gap-4">
+                                                <div className="w-48">
+                                                  <Select label="DC Cabling Type" value={installInfo.dc_cabling_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cabling_type: e.target.value }))}
+                                                    options={[{ value: 'No Match', label: 'No Match' }, { value: 'Included - Standard Cable', label: 'Included - Standard Cable' }, { value: 'Included - Direct Buried', label: 'Included - Direct Buried' }, { value: 'Not Included', label: 'Not Included' }]} />
+                                                </div>
+                                                <div className="w-32">
+                                                  <Select label="DC Cable Size" value={installInfo.dc_cable_size || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, dc_cable_size: e.target.value }))}
+                                                    options={['4 mm', '6 mm', '10 mm', '16 mm'].map(s => ({ value: s, label: s }))} />
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      )}
+                                      {(subcatName === 'AC Calculation' || subcatName === 'AC Cabling') && (
+                                        <tr>
+                                          <td colSpan={10} className="px-8 py-4 bg-slate-850/30 border-b border-slate-800/50">
+                                            <div className="flex flex-col gap-3">
+                                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Adjustment Factors:</span>
+                                              <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+                                                {/* AC Inverter to PVDB */}
+                                                <div className="flex items-center gap-3 bg-slate-800/40 px-3 py-2 rounded-lg border border-slate-700/50">
+                                                  <span className="text-xs text-slate-400 font-semibold whitespace-nowrap">INV TO PVDB:</span>
+                                                  <div className="w-44">
+                                                    <Select label="Type" value={installInfo.ac_inverter_pvdb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_inverter_pvdb_type: e.target.value }))}
+                                                      options={[{ value: 'No Match', label: 'No Match' }, { value: 'Included - Copper', label: 'Included - Copper' }, { value: 'Included - Aluminium', label: 'Included - Aluminium' }, { value: 'Not Included', label: 'Not Included' }]} />
+                                                  </div>
+                                                  <div className="w-32">
+                                                    <Select label="Construction" value={installInfo.ac_inverter_pvdb_construction || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_inverter_pvdb_construction: e.target.value }))}
+                                                      options={['Single Core', '4C + E'].map(s => ({ value: s, label: s }))} />
+                                                  </div>
+                                                  <div className="w-24">
+                                                    <Input label="Length" type="number" step="0.1" value={installInfo.ac_inverter_pvdb_m || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_inverter_pvdb_m: parseFloat(e.target.value) || 0 }))} suffix="m" />
+                                                  </div>
+                                                </div>
+                                                {/* AC PVDB to MSB */}
+                                                <div className="flex items-center gap-3 bg-slate-800/40 px-3 py-2 rounded-lg border border-slate-700/50">
+                                                  <span className="text-xs text-slate-400 font-semibold whitespace-nowrap">PVDB TO MSB:</span>
+                                                  <div className="w-44">
+                                                    <Select label="Type" value={installInfo.ac_pvdb_msb_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_pvdb_msb_type: e.target.value }))}
+                                                      options={[{ value: 'No Match', label: 'No Match' }, { value: 'Included - Copper', label: 'Included - Copper' }, { value: 'Included - Aluminium', label: 'Included - Aluminium' }, { value: 'Not Included', label: 'Not Included' }]} />
+                                                  </div>
+                                                  <div className="w-32">
+                                                    <Select label="Construction" value={installInfo.ac_pvdb_msb_construction || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_pvdb_msb_construction: e.target.value }))}
+                                                      options={['Single Core', '4C + E'].map(s => ({ value: s, label: s }))} />
+                                                  </div>
+                                                  <div className="w-24">
+                                                    <Input label="Length" type="number" step="0.1" value={installInfo.ac_pvdb_msb_m || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, ac_pvdb_msb_m: parseFloat(e.target.value) || 0 }))} suffix="m" />
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      )}
+                                      {subcatName === 'Cabling Addons' && (
+                                        <tr>
+                                          <td colSpan={10} className="px-8 py-3 bg-slate-850/30 border-b border-slate-800/50">
+                                            <div className="flex items-center gap-6">
+                                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Adjustment Factors:</span>
+                                              <div className="flex items-center gap-4">
+                                                <div className="w-40">
+                                                  <Select label="Cable Tray Type" value={installInfo.cable_tray_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, cable_tray_type: e.target.value }))}
+                                                    options={[{ value: 'No Match', label: 'No Match' }, { value: 'GAL', label: 'GAL' }, { value: 'FRP', label: 'FRP' }, { value: 'None', label: 'None' }]} />
+                                                </div>
+                                                <div className="w-24">
+                                                  <Input label="Tray Length" type="number" step="1" value={installInfo.cable_tray_m || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, cable_tray_m: parseInt(e.target.value) || 0 }))} suffix="m" />
+                                                </div>
+                                                <div className="w-40 ml-4">
+                                                  <Select label="Trenching Type" value={installInfo.trenching_type || ''} onChange={(e) => setInstallInfo(prev => ({ ...prev, trenching_type: e.target.value }))}
+                                                    options={[
+                                                      { value: 'No Match', label: 'No Match' },
+                                                      { value: 'Not Included', label: 'Not Included' },
+                                                      { value: 'Soft Ground', label: 'Soft Ground' },
+                                                      { value: 'Hard Ground', label: 'Hard Ground' }
+                                                    ]} />
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      )}
+                                      {includedItems.map((item) => (
+                                        <LineItemRow
+                                          key={item.instance_id}
+                                          item={item}
+                                          scope={scope as PartialFormulaScope}
+                                          onStatusChange={(status) => handleItemStatusChange(item.instance_id, status)}
+                                          onQtyChange={(qty) => handleItemQtyChange(item.instance_id, qty)}
+                                          onUseCalcQtyChange={(useCalc) => {
+                                            const store = useQuoteEditorStore.getState()
+                                            store.setLineItemState(item.instance_id, { use_calculated_qty: useCalc })
+                                          }}
+                                          onOptionChange={(groupId, optionId) => {
+                                            const store = useQuoteEditorStore.getState()
+                                            store.setOptionSelection(item.instance_id, groupId, optionId)
+                                          }}
+                                          onFormulaOverride={(formula) => {
+                                            const store = useQuoteEditorStore.getState()
+                                            store.setFormulaOverride(item.instance_id, formula)
+                                          }}
+                                          onModifierChange={() => { }}
+                                          onDuplicate={() => {
+                                            const store = useQuoteEditorStore.getState()
+                                            store.duplicateLineItem(item.instance_id)
+                                          }}
+                                          onRemove={() => {
+                                            const store = useQuoteEditorStore.getState()
+                                            store.setLineItemState(item.instance_id, { inclusion_status: 'not_required' })
+                                          }}
+                                        />
+                                      ))}
+
+                                      {/* Combobox for unselected items */}
+                                      {items.filter(item => !item.is_included).length > 0 && (
+                                        <tr>
+                                          <td colSpan={10} className="px-6 py-4 bg-slate-850/30">
+                                            <div className="flex flex-col items-center justify-center py-6 px-4 border-2 border-dashed border-slate-700/50 rounded-xl bg-slate-800/20">
+                                              <span className="text-sm font-medium text-slate-400 mb-3">Add Item</span>
+                                              <div className="w-full max-w-md relative">
+                                                <Select 
+                                                  value="" 
+                                                  onChange={(e) => {
+                                                    if (e.target.value) {
+                                                      const store = useQuoteEditorStore.getState()
+                                                      store.setLineItemState(e.target.value, { inclusion_status: 'included' })
+                                                    }
+                                                  }}
+                                                  options={[
+                                                    { value: '', label: 'Select an item to add...' },
+                                                    ...items.filter(item => !item.is_included).map(i => ({ 
+                                                      value: i.instance_id, 
+                                                      label: `${i.code} - ${i.name || i.description || 'No description'}` 
+                                                    }))
+                                                  ]} 
+                                                  className="bg-slate-900 border-slate-600 focus:border-brand-500 focus:ring-brand-500 text-slate-200"
+                                                />
+                                              </div>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      )}
+                                  </>
+                                  )}
                                 </Fragment>
                               )
                             })}

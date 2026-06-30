@@ -311,22 +311,15 @@ export default function LineItemRow({
         item.is_duplicate && 'bg-slate-900/40',
       )}
     >
-      {/* Inclusion status */}
-      <td className="pl-3 pr-2 py-2 w-36 align-top relative">
-        <div className="flex flex-col gap-1.5 items-start mt-2.5">
-          <label className={clsx("flex items-center gap-2 cursor-pointer group", readOnly && "opacity-60 cursor-default pointer-events-none")}>
-            <input 
-              type="checkbox"
-              checked={item.is_included}
-              onChange={(e) => onStatusChange(e.target.checked ? 'included' : 'not_required')}
-              disabled={readOnly}
-              className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-brand-500 focus:ring-brand-500 cursor-pointer"
-            />
-            <span className={clsx("text-xs font-medium transition-colors", item.is_included ? "text-emerald-400" : "text-slate-500 group-hover:text-slate-400")}>
-              {item.is_included ? 'Included' : 'Not Required'}
-            </span>
-          </label>
-          
+      {/* Code */}
+      <td className="pl-4 pr-3 py-2 w-20 align-top pt-2.5">
+        <div className="flex flex-col gap-1.5 items-start">
+          <div>
+            <code className="text-xs text-slate-600 font-mono">{item.code}</code>
+            {item.is_duplicate && (
+              <span className="block text-xs text-slate-700 font-mono">(copy)</span>
+            )}
+          </div>
           <div className="flex items-center gap-1.5 flex-wrap">
             {item.is_custom && (
               <span className="text-[10px] leading-none text-amber-500 bg-amber-900/30 px-1 py-1 rounded text-center">custom</span>
@@ -334,14 +327,6 @@ export default function LineItemRow({
             <FormulaTooltip item={item} scope={scope} />
           </div>
         </div>
-      </td>
-
-      {/* Code */}
-      <td className="pr-3 py-2 w-20 align-top pt-2.5">
-        <code className="text-xs text-slate-600 font-mono">{item.code}</code>
-        {item.is_duplicate && (
-          <span className="block text-xs text-slate-700 font-mono">(copy)</span>
-        )}
       </td>
 
       {/* Name + formula editor + option group selectors */}
@@ -595,51 +580,53 @@ export default function LineItemRow({
         {item.is_included && item.sale_per_watt ? `$${(item.sale_per_watt).toLocaleString('en-AU', { minimumFractionDigits: 4 })}` : '—'}
       </td>
 
-      {/* Context menu */}
-      <td className="pr-2 py-2 w-8 align-top">
+      {/* Context menu & Actions */}
+      <td className="pr-2 py-2 w-16 align-top text-right">
         {!readOnly && (
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setMenuOpen((v) => !v)}
-              className="p-1 rounded hover:bg-slate-700 text-slate-600 hover:text-slate-300
-                         opacity-0 group-hover:opacity-100 transition-opacity"
-              title="More actions"
-            >
-              <MoreVertical className="w-3.5 h-3.5" />
-            </button>
-            {menuOpen && (
-              <div className="absolute right-0 top-7 z-50 bg-slate-800 border border-slate-700
-                              rounded-lg shadow-2xl py-1 min-w-[160px]">
-                <button
-                  onClick={() => { onDuplicate(); setMenuOpen(false) }}
-                  className="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-slate-700
-                             flex items-center gap-2 transition-colors"
-                >
-                  <Copy className="w-3.5 h-3.5 shrink-0" />
-                  Duplicate row
-                </button>
-                {isFormulaOverridden && (
-                  <button
-                    onClick={() => { onFormulaOverride(null); setMenuOpen(false) }}
-                    className="w-full text-left px-3 py-2 text-xs text-amber-400 hover:bg-slate-700
-                               flex items-center gap-2 transition-colors"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 shrink-0" />
-                    Reset formula
-                  </button>
-                )}
-                {item.is_removable && onRemove && (
-                  <button
-                    onClick={() => { onRemove(); setMenuOpen(false) }}
-                    className="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-slate-700
-                               flex items-center gap-2 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                    Remove row
-                  </button>
-                )}
-              </div>
+          <div className="flex items-center justify-end gap-1" ref={menuRef}>
+            {onRemove && (
+              <button
+                onClick={onRemove}
+                className="p-1.5 rounded hover:bg-slate-700 text-slate-500 hover:text-red-400
+                           opacity-0 group-hover:opacity-100 transition-all"
+                title="Remove from quote"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             )}
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen((v) => !v)}
+                className="p-1 rounded hover:bg-slate-700 text-slate-600 hover:text-slate-300
+                           opacity-0 group-hover:opacity-100 transition-opacity"
+                title="More actions"
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-7 z-50 bg-slate-800 border border-slate-700
+                                rounded-lg shadow-2xl py-1 min-w-[160px]">
+                  <button
+                    onClick={() => { onDuplicate(); setMenuOpen(false) }}
+                    className="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-slate-700
+                               flex items-center gap-2 transition-colors"
+                  >
+                    <Copy className="w-3.5 h-3.5 shrink-0" />
+                    Duplicate row
+                  </button>
+                  {isFormulaOverridden && (
+                    <button
+                      onClick={() => { onFormulaOverride(null); setMenuOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-xs text-amber-400 hover:bg-slate-700
+                                 flex items-center gap-2 transition-colors"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                      Reset formula
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </td>
