@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, Fragment } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Save, ArrowLeft, ChevronDown, ChevronRight, Calculator, TrendingUp, Clock, Settings, Zap, Wrench } from 'lucide-react'
+import { Save, ArrowLeft, ChevronDown, ChevronRight, Calculator, TrendingUp, Clock, Settings } from 'lucide-react'
 import { useQuoteEditorStore } from '../../stores/quoteEditorStore'
 import { usePriceItems } from '../../hooks/usePriceItems'
 import { usePriceVersions } from '../../hooks/usePriceVersions'
@@ -97,8 +97,6 @@ export default function QuoteEditorPage() {
   })
 
   const [isPcmExpanded, setIsPcmExpanded] = useState(false)
-  const [isCablingExpanded, setIsCablingExpanded] = useState(false)
-  const [isTrenchingExpanded, setIsTrenchingExpanded] = useState(false)
 
   const [projectName, setProjectName] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['Prelim', 'PV_Components']))
@@ -1147,7 +1145,7 @@ export default function QuoteEditorPage() {
                                                     { value: '', label: 'Select an item to add...' },
                                                     ...items.filter(item => !item.is_included).map(i => ({ 
                                                       value: i.instance_id, 
-                                                      label: `${i.code} - ${i.name || i.description || 'No description'}` 
+                                                      label: `${i.code} - ${i.name || 'No description'}` 
                                                     }))
                                                   ]} 
                                                   className="bg-slate-900 border-slate-600 focus:border-brand-500 focus:ring-brand-500 text-slate-200"
