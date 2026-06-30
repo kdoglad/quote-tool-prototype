@@ -477,10 +477,6 @@ export default function QuoteEditorPage() {
     return groups
   }, [computedItems])
 
-  const handleItemStatusChange = useCallback((instanceId: string, status: InclusionStatus) => {
-    setLineItemState(instanceId, { inclusion_status: status })
-  }, [setLineItemState])
-
   const handleItemQtyChange = useCallback((instanceId: string, qty: number) => {
     setLineItemState(instanceId, { qty })
   }, [setLineItemState])
@@ -1100,7 +1096,6 @@ export default function QuoteEditorPage() {
                                           key={item.instance_id}
                                           item={item}
                                           scope={scope as PartialFormulaScope}
-                                          onStatusChange={(status) => handleItemStatusChange(item.instance_id, status)}
                                           onQtyChange={(qty) => handleItemQtyChange(item.instance_id, qty)}
                                           onUseCalcQtyChange={(useCalc) => {
                                             const store = useQuoteEditorStore.getState()
