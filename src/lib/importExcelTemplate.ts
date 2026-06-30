@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { PREFIX_MAP, CATALOG_CATEGORY_OPTIONS } from './constants';
+import { PREFIX_MAP } from './constants';
 import * as XLSX from 'xlsx';
 import { SPEC_TABLES, UI_FIELDS, AC_MAP_FIELDS, FIELD_TYPES } from './excelTemplateConfig';
 
