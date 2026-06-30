@@ -1,12 +1,6 @@
 import { useState } from 'react'
 import { Plus, ChevronDown, ChevronRight } from 'lucide-react'
-import type {
-  ComputedLineItem,
-  ItemCategory,
-  PartialFormulaScope,
-  ModifierType,
-  InclusionStatus,
-} from '../../types/domain.types'
+import type { ComputedLineItem } from '../../types/domain.types'
 import { CATEGORIES, CATALOG_CATEGORY_OPTIONS } from '../../lib/constants'
 import LineItemRow from './LineItemRow'
 import Button from '../ui/Button'
